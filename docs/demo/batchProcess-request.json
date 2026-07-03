@@ -1,0 +1,10 @@
+{
+  "chainId": "batchProcess",
+  "param": {
+    "orderId": "ORD-2026-001",
+    "items": [
+      { "skuId": "SKU-001", "qty": 2 },
+      { "skuId": "SKU-002", "qty": 1 }
+    ]
+  }
+}

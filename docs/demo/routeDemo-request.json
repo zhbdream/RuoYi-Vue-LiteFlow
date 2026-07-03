@@ -1,0 +1,7 @@
+{
+  "namespace": "routeDemo",
+  "contextClass": "com.ruoyiliteflow.liteflow.domain.context.RouteUserContext",
+  "param": {
+    "userType": "NEW"
+  }
+}

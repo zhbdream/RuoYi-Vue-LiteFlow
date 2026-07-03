@@ -1,0 +1,22 @@
+# 内部规划文档（不随开源仓库发布）
+docs/ROADMAP.md
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# Build
+target/
+*.class
+*.jar
+*.war
+
+# Logs & temp
+*.log
+*.tmp
+.DS_Store
+Thumbs.db
+
+# Node（前端子项目另有 .gitignore，此处兜底）
+node_modules/

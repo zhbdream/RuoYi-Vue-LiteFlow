@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyiliteflow.liteflow.mapper.LfChainAuditMapper">
+
+    <resultMap type="com.ruoyiliteflow.liteflow.domain.LfChainAudit" id="LfChainAuditResult">
+        <id     property="id"          column="id"           />
+        <result property="chainId"     column="chain_id"     />
+        <result property="chainName"   column="chain_name"   />
+        <result property="actionType"  column="action_type"  />
+        <result property="elBefore"    column="el_before"    />
+        <result property="elAfter"     column="el_after"     />
+        <result property="draftFlag"   column="draft_flag"   />
+        <result property="version"     column="version"      />
+        <result property="operateBy"   column="operate_by"   />
+        <result property="createTime"  column="create_time"  />
+        <result property="remark"      column="remark"       />
+    </resultMap>
+
+    <sql id="selectLfChainAuditVo">
+        select id, chain_id, chain_name, action_type, el_before, el_after,
+               draft_flag, version, operate_by, create_time, remark
+        from lf_chain_audit
+    </sql>
+
+    <select id="selectLfChainAuditList" parameterType="com.ruoyiliteflow.liteflow.domain.LfChainAudit" resultMap="LfChainAuditResult">
+        <include refid="selectLfChainAuditVo"/>
+        <where>
+            <if test="chainId != null">
+                AND chain_id = #{chainId}
+            </if>
+            <if test="chainName != null and chainName != ''">
+                AND chain_name like concat('%', #{chainName}, '%')
+            </if>
+            <if test="actionType != null and actionType != ''">
+                AND action_type = #{actionType}
+            </if>
+            <if test="operateBy != null and operateBy != ''">
+                AND operate_by like concat('%', #{operateBy}, '%')
+            </if>
+            <if test="params.beginTime != null and params.beginTime != ''">
+                AND create_time &gt;= #{params.beginTime}
+            </if>
+            <if test="params.endTime != null and params.endTime != ''">
+                AND create_time &lt;= #{params.endTime}
+            </if>
+        </where>
+        order by id desc
+    </select>
+
+    <select id="selectLfChainAuditById" parameterType="Long" resultMap="LfChainAuditResult">
+        <include refid="selectLfChainAuditVo"/>
+        where id = #{id}
+    </select>
+
+    <insert id="insertLfChainAudit" parameterType="com.ruoyiliteflow.liteflow.domain.LfChainAudit" useGeneratedKeys="true" keyProperty="id">
+        insert into lf_chain_audit (
+            chain_id, chain_name, action_type, el_before, el_after,
+            draft_flag, version, operate_by, create_time, remark
+        ) values (
+            #{chainId}, #{chainName}, #{actionType}, #{elBefore}, #{elAfter},
+            #{draftFlag}, #{version}, #{operateBy}, sysdate(), #{remark}
+        )
+    </insert>
+
+    <delete id="deleteLfChainAuditByIds" parameterType="Long">
+        delete from lf_chain_audit where id in
+        <foreach collection="array" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+
+</mapper>

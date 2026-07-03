@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyiliteflow.liteflow.mapper.LfChainPermissionMapper">
+
+    <resultMap type="com.ruoyiliteflow.liteflow.domain.LfChainPermission" id="LfChainPermissionResult">
+        <id     property="id"          column="id"           />
+        <result property="chainName"   column="chain_name"   />
+        <result property="roleId"      column="role_id"      />
+        <result property="canExecute"  column="can_execute"  />
+        <result property="canEdit"     column="can_edit"     />
+        <result property="roleName"    column="role_name"    />
+        <result property="createBy"    column="create_by"    />
+        <result property="createTime"  column="create_time"  />
+    </resultMap>
+
+    <select id="selectByChainName" parameterType="String" resultMap="LfChainPermissionResult">
+        select p.id, p.chain_name, p.role_id, p.can_execute, p.can_edit, p.create_by, p.create_time,
+               r.role_name
+        from lf_chain_permission p
+        left join sys_role r on p.role_id = r.role_id
+        where p.chain_name = #{chainName}
+        order by p.id
+    </select>
+
+    <select id="countByChainName" parameterType="String" resultType="int">
+        select count(1) from lf_chain_permission where chain_name = #{chainName}
+    </select>
+
+    <select id="countExecutePermission" resultType="int">
+        select count(1) from lf_chain_permission
+        where chain_name = #{chainName}
+          and can_execute = '1'
+          and role_id in
+        <foreach collection="roleIds" item="roleId" open="(" separator="," close=")">
+            #{roleId}
+        </foreach>
+    </select>
+
+    <select id="countEditPermission" resultType="int">
+        select count(1) from lf_chain_permission
+        where chain_name = #{chainName}
+          and can_edit = '1'
+          and role_id in
+        <foreach collection="roleIds" item="roleId" open="(" separator="," close=")">
+            #{roleId}
+        </foreach>
+    </select>
+
+    <delete id="deleteByChainName" parameterType="String">
+        delete from lf_chain_permission where chain_name = #{chainName}
+    </delete>
+
+    <insert id="insertLfChainPermission" parameterType="com.ruoyiliteflow.liteflow.domain.LfChainPermission" useGeneratedKeys="true" keyProperty="id">
+        insert into lf_chain_permission (
+            chain_name, role_id, can_execute, can_edit, create_by, create_time
+        ) values (
+            #{chainName}, #{roleId}, #{canExecute}, #{canEdit}, #{createBy}, sysdate()
+        )
+    </insert>
+
+</mapper>

@@ -1,0 +1,8 @@
+{
+  "chainId": "resilientNotify",
+  "param": {
+    "userId": "U10001",
+    "channel": "sms",
+    "simulateFail": true
+  }
+}

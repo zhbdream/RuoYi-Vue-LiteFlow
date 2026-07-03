@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyiliteflow.liteflow.mapper.LfScriptMapper">
+
+    <resultMap type="com.ruoyiliteflow.liteflow.domain.LfScript" id="LfScriptResult">
+        <id     property="id"              column="id"               />
+        <result property="applicationName" column="application_name" />
+        <result property="scriptId"        column="script_id"        />
+        <result property="scriptName"      column="script_name"      />
+        <result property="scriptData"      column="script_data"      />
+        <result property="scriptType"      column="script_type"      />
+        <result property="scriptLanguage"  column="script_language"  />
+        <result property="enable"          column="enable"           />
+        <result property="createBy"        column="create_by"        />
+        <result property="createTime"      column="create_time"      />
+        <result property="updateBy"        column="update_by"        />
+        <result property="updateTime"      column="update_time"      />
+        <result property="remark"          column="remark"           />
+    </resultMap>
+
+    <sql id="selectLfScriptVo">
+        select id, application_name, script_id, script_name, script_data, script_type,
+               script_language, enable, create_by, create_time, update_by, update_time, remark
+        from lf_script
+    </sql>
+
+    <select id="selectLfScriptList" parameterType="com.ruoyiliteflow.liteflow.domain.LfScript" resultMap="LfScriptResult">
+        <include refid="selectLfScriptVo"/>
+        <where>
+            <if test="scriptId != null and scriptId != ''">
+                AND script_id like concat('%', #{scriptId}, '%')
+            </if>
+            <if test="scriptName != null and scriptName != ''">
+                AND script_name like concat('%', #{scriptName}, '%')
+            </if>
+            <if test="scriptType != null and scriptType != ''">
+                AND script_type = #{scriptType}
+            </if>
+            <if test="applicationName != null and applicationName != ''">
+                AND application_name = #{applicationName}
+            </if>
+        </where>
+        order by id desc
+    </select>
+
+    <select id="selectLfScriptById" parameterType="Long" resultMap="LfScriptResult">
+        <include refid="selectLfScriptVo"/>
+        where id = #{id}
+    </select>
+
+    <select id="selectLfScriptByScriptId" parameterType="String" resultMap="LfScriptResult">
+        <include refid="selectLfScriptVo"/>
+        where script_id = #{scriptId}
+    </select>
+
+    <insert id="insertLfScript" parameterType="com.ruoyiliteflow.liteflow.domain.LfScript" useGeneratedKeys="true" keyProperty="id">
+        insert into lf_script (
+            application_name, script_id, script_name, script_data, script_type,
+            script_language, enable, create_by, create_time, remark
+        ) values (
+            #{applicationName}, #{scriptId}, #{scriptName}, #{scriptData}, #{scriptType},
+            #{scriptLanguage}, #{enable}, #{createBy}, sysdate(), #{remark}
+        )
+    </insert>
+
+    <update id="updateLfScript" parameterType="com.ruoyiliteflow.liteflow.domain.LfScript">
+        update lf_script
+        <set>
+            <if test="applicationName != null and applicationName != ''">application_name = #{applicationName},</if>
+            <if test="scriptId != null and scriptId != ''">script_id = #{scriptId},</if>
+            <if test="scriptName != null">script_name = #{scriptName},</if>
+            <if test="scriptData != null and scriptData != ''">script_data = #{scriptData},</if>
+            <if test="scriptType != null and scriptType != ''">script_type = #{scriptType},</if>
+            <if test="scriptLanguage != null and scriptLanguage != ''">script_language = #{scriptLanguage},</if>
+            <if test="enable != null">enable = #{enable},</if>
+            <if test="updateBy != null and updateBy != ''">update_by = #{updateBy},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            update_time = sysdate()
+        </set>
+        where id = #{id}
+    </update>
+
+    <delete id="deleteLfScriptById" parameterType="Long">
+        delete from lf_script where id = #{id}
+    </delete>
+
+    <delete id="deleteLfScriptByIds" parameterType="Long">
+        delete from lf_script where id in
+        <foreach collection="array" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+
+</mapper>

@@ -1,0 +1,153 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyiliteflow.liteflow.mapper.LfExecLogMapper">
+
+    <resultMap type="com.ruoyiliteflow.liteflow.domain.LfExecLog" id="LfExecLogResult">
+        <id     property="id"                       column="id"                        />
+        <result property="requestId"                column="request_id"                />
+        <result property="chainName"                column="chain_name"                />
+        <result property="success"                  column="success"                   />
+        <result property="code"                     column="code"                      />
+        <result property="message"                  column="message"                   />
+        <result property="executeStepStr"           column="execute_step_str"          />
+        <result property="executeStepStrWithTime"   column="execute_step_str_with_time"/>
+        <result property="stepsJson"                column="steps_json"                />
+        <result property="paramJson"                column="param_json"                />
+        <result property="contextJson"              column="context_json"              />
+        <result property="durationMs"               column="duration_ms"               />
+        <result property="errorMessage"             column="error_message"             />
+        <result property="failedNodeId"             column="failed_node_id"            />
+        <result property="createBy"                 column="create_by"                 />
+        <result property="createTime"               column="create_time"               />
+    </resultMap>
+
+    <sql id="selectLfExecLogVo">
+        select id, request_id, chain_name, success, code, message, execute_step_str,
+               execute_step_str_with_time, steps_json, param_json, context_json,
+               duration_ms, error_message, failed_node_id, create_by, create_time
+        from lf_exec_log
+    </sql>
+
+    <select id="selectLfExecLogList" parameterType="com.ruoyiliteflow.liteflow.domain.LfExecLog" resultMap="LfExecLogResult">
+        <include refid="selectLfExecLogVo"/>
+        <where>
+            <if test="requestId != null and requestId != ''">
+                AND request_id like concat('%', #{requestId}, '%')
+            </if>
+            <if test="chainName != null and chainName != ''">
+                AND chain_name like concat('%', #{chainName}, '%')
+            </if>
+            <if test="success != null">
+                AND success = #{success}
+            </if>
+            <if test="params.beginTime != null and params.beginTime != ''">
+                AND create_time &gt;= #{params.beginTime}
+            </if>
+            <if test="params.endTime != null and params.endTime != ''">
+                AND create_time &lt;= #{params.endTime}
+            </if>
+        </where>
+        order by id desc
+    </select>
+
+    <select id="selectLfExecLogById" parameterType="Long" resultMap="LfExecLogResult">
+        <include refid="selectLfExecLogVo"/>
+        where id = #{id}
+    </select>
+
+    <select id="selectLfExecLogByRequestId" parameterType="String" resultMap="LfExecLogResult">
+        <include refid="selectLfExecLogVo"/>
+        where request_id = #{requestId}
+    </select>
+
+    <insert id="insertLfExecLog" parameterType="com.ruoyiliteflow.liteflow.domain.LfExecLog" useGeneratedKeys="true" keyProperty="id">
+        insert into lf_exec_log (
+            request_id, chain_name, success, code, message, execute_step_str,
+            execute_step_str_with_time, steps_json, param_json, context_json,
+            duration_ms, error_message, failed_node_id, create_by, create_time
+        ) values (
+            #{requestId}, #{chainName}, #{success}, #{code}, #{message}, #{executeStepStr},
+            #{executeStepStrWithTime}, #{stepsJson}, #{paramJson}, #{contextJson},
+            #{durationMs}, #{errorMessage}, #{failedNodeId}, #{createBy}, sysdate()
+        )
+    </insert>
+
+    <delete id="deleteLfExecLogByIds" parameterType="Long">
+        delete from lf_exec_log where id in
+        <foreach collection="array" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+
+    <delete id="cleanLfExecLog">
+        truncate table lf_exec_log
+    </delete>
+
+    <select id="selectDashboardOverview" resultType="java.util.HashMap">
+        select
+            count(*) as totalCalls,
+            ifnull(sum(case when success = 1 then 1 else 0 end), 0) as successCount,
+            ifnull(sum(case when success = 0 then 1 else 0 end), 0) as failCount,
+            ifnull(round(avg(duration_ms)), 0) as avgDurationMs
+        from lf_exec_log
+        where create_time &gt;= date_sub(now(), interval #{days} day)
+    </select>
+
+    <select id="selectDashboardTrend" resultType="com.ruoyiliteflow.liteflow.domain.vo.LfDashboardVo$LfDashboardTrendItem">
+        select
+            date_format(create_time, '%Y-%m-%d') as statDate,
+            count(*) as total,
+            ifnull(sum(case when success = 1 then 1 else 0 end), 0) as successCount,
+            ifnull(sum(case when success = 0 then 1 else 0 end), 0) as failCount
+        from lf_exec_log
+        where create_time &gt;= date_sub(now(), interval #{days} day)
+        group by date_format(create_time, '%Y-%m-%d')
+        order by statDate
+    </select>
+
+    <select id="selectDashboardChainStats" resultType="com.ruoyiliteflow.liteflow.domain.vo.LfDashboardVo$LfDashboardChainStat">
+        select
+            chain_name as chainName,
+            count(*) as total,
+            ifnull(sum(case when success = 1 then 1 else 0 end), 0) as successCount,
+            ifnull(sum(case when success = 0 then 1 else 0 end), 0) as failCount,
+            ifnull(round(avg(duration_ms)), 0) as avgDurationMs
+        from lf_exec_log
+        where create_time &gt;= date_sub(now(), interval #{days} day)
+        group by chain_name
+        order by total desc
+        limit 15
+    </select>
+
+    <select id="selectDashboardFailTop" resultType="com.ruoyiliteflow.liteflow.domain.vo.LfDashboardVo$LfDashboardFailTop">
+        select
+            chain_name as chainName,
+            ifnull(error_message, message) as errorMessage,
+            count(*) as count
+        from lf_exec_log
+        where success = 0
+          and create_time &gt;= date_sub(now(), interval #{days} day)
+          and ifnull(error_message, message) is not null
+          and ifnull(error_message, message) != ''
+        group by chain_name, ifnull(error_message, message)
+        order by count desc
+        limit 10
+    </select>
+
+    <select id="selectDashboardSlowTop" resultType="com.ruoyiliteflow.liteflow.domain.vo.LfDashboardVo$LfDashboardSlowTop">
+        select
+            id,
+            chain_name as chainName,
+            request_id as requestId,
+            duration_ms as durationMs,
+            date_format(create_time, '%Y-%m-%d %H:%i:%s') as createTime
+        from lf_exec_log
+        where create_time &gt;= date_sub(now(), interval #{days} day)
+          and duration_ms is not null
+        order by duration_ms desc
+        limit 10
+    </select>
+
+</mapper>

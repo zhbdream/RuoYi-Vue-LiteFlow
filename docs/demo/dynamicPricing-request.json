@@ -1,0 +1,9 @@
+{
+  "chainId": "dynamicPricing",
+  "param": {
+    "userId": 1001,
+    "memberLevel": "VIP",
+    "originalPrice": 299.00,
+    "couponCode": "SAVE20"
+  }
+}

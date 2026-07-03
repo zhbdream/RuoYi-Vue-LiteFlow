@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyiliteflow.liteflow.mapper.LfChainVersionMapper">
+
+    <resultMap type="com.ruoyiliteflow.liteflow.domain.LfChainVersion" id="LfChainVersionResult">
+        <id     property="id"         column="id"          />
+        <result property="chainId"    column="chain_id"    />
+        <result property="chainName"  column="chain_name"  />
+        <result property="version"    column="version"     />
+        <result property="elData"     column="el_data"     />
+        <result property="graphJson"  column="graph_json"  />
+        <result property="publishBy"  column="publish_by"  />
+        <result property="createTime" column="create_time" />
+        <result property="remark"     column="remark"      />
+    </resultMap>
+
+    <sql id="selectLfChainVersionVo">
+        select id, chain_id, chain_name, version, el_data, graph_json, publish_by, create_time, remark
+        from lf_chain_version
+    </sql>
+
+    <select id="selectLfChainVersionList" parameterType="com.ruoyiliteflow.liteflow.domain.LfChainVersion" resultMap="LfChainVersionResult">
+        <include refid="selectLfChainVersionVo"/>
+        <where>
+            <if test="chainId != null">AND chain_id = #{chainId}</if>
+            <if test="chainName != null and chainName != ''">AND chain_name = #{chainName}</if>
+        </where>
+        order by id desc
+    </select>
+
+    <select id="selectLfChainVersionById" parameterType="Long" resultMap="LfChainVersionResult">
+        <include refid="selectLfChainVersionVo"/>
+        where id = #{id}
+    </select>
+
+    <insert id="insertLfChainVersion" parameterType="com.ruoyiliteflow.liteflow.domain.LfChainVersion" useGeneratedKeys="true" keyProperty="id">
+        insert into lf_chain_version (
+            chain_id, chain_name, version, el_data, graph_json, publish_by, create_time, remark
+        ) values (
+            #{chainId}, #{chainName}, #{version}, #{elData}, #{graphJson}, #{publishBy}, sysdate(), #{remark}
+        )
+    </insert>
+
+</mapper>

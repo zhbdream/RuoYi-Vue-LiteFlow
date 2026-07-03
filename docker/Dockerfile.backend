@@ -1,0 +1,22 @@
+# syntax=docker/dockerfile:1
+
+FROM maven:3.9-eclipse-temurin-17 AS build
+WORKDIR /app
+COPY pom.xml .
+COPY ruoyi-vue-liteflow-admin/pom.xml ruoyi-vue-liteflow-admin/
+COPY ruoyi-vue-liteflow-common/pom.xml ruoyi-vue-liteflow-common/
+COPY ruoyi-vue-liteflow-framework/pom.xml ruoyi-vue-liteflow-framework/
+COPY ruoyi-vue-liteflow-generator/pom.xml ruoyi-vue-liteflow-generator/
+COPY ruoyi-vue-liteflow-liteflow/pom.xml ruoyi-vue-liteflow-liteflow/
+COPY ruoyi-vue-liteflow-quartz/pom.xml ruoyi-vue-liteflow-quartz/
+COPY ruoyi-vue-liteflow-system/pom.xml ruoyi-vue-liteflow-system/
+RUN mvn -pl ruoyi-vue-liteflow-admin -am dependency:go-offline -DskipTests
+
+COPY . .
+RUN mvn -pl ruoyi-vue-liteflow-admin -am package -DskipTests
+
+FROM eclipse-temurin:17-jre
+WORKDIR /app
+COPY --from=build /app/ruoyi-vue-liteflow-admin/target/ruoyi-vue-liteflow-admin.jar app.jar
+EXPOSE 8080
+ENTRYPOINT ["java", "-jar", "app.jar"]

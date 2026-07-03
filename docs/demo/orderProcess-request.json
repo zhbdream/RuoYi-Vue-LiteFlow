@@ -1,0 +1,10 @@
+{
+  "chainId": "orderProcess",
+  "param": {
+    "userId": 1001,
+    "skuId": "SKU-001",
+    "quantity": 2,
+    "payType": "wechat",
+    "couponCode": "SAVE10"
+  }
+}
