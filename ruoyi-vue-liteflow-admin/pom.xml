@@ -48,6 +48,12 @@
             <artifactId>ruoyi-vue-liteflow-liteflow</artifactId>
         </dependency>
 
+        <!-- LiteFlow Re-Act Agent（DeepSeek / OpenAI 兼容） -->
+        <dependency>
+            <groupId>com.ruoyiliteflow</groupId>
+            <artifactId>ruoyi-vue-liteflow-agent</artifactId>
+        </dependency>
+
         <!-- 定时任务-->
         <dependency>
             <groupId>com.ruoyiliteflow</groupId>

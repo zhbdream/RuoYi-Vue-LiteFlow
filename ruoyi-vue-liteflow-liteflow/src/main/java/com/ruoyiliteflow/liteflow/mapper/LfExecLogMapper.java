@@ -29,4 +29,7 @@ public interface LfExecLogMapper
     List<LfDashboardVo.LfDashboardFailTop> selectDashboardFailTop(@Param("days") int days);
 
     List<LfDashboardVo.LfDashboardSlowTop> selectDashboardSlowTop(@Param("days") int days);
+
+    /** 近 N 天带步骤耗时的日志（用于慢节点聚合） */
+    List<LfExecLog> selectRecentStepTimeLogs(@Param("days") int days);
 }

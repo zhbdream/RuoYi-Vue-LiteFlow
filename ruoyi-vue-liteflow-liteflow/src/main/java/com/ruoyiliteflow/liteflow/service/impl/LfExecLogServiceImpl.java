@@ -1,5 +1,6 @@
 package com.ruoyiliteflow.liteflow.service.impl;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -11,6 +12,7 @@ import com.ruoyiliteflow.liteflow.domain.LfExecLog;
 import com.ruoyiliteflow.liteflow.domain.vo.LiteFlowExecuteResultVo;
 import com.ruoyiliteflow.liteflow.mapper.LfExecLogMapper;
 import com.ruoyiliteflow.liteflow.service.ILfExecLogService;
+import com.ruoyiliteflow.liteflow.util.ExecuteStepTimeParser;
 
 @Service
 public class LfExecLogServiceImpl implements ILfExecLogService
@@ -59,6 +61,19 @@ public class LfExecLogServiceImpl implements ILfExecLogService
         steps.put("executeStepStr", result.getExecuteStepStr());
         steps.put("executeStepStrWithTime", result.getExecuteStepStrWithTime());
         steps.put("failedNodeId", result.getFailedNodeId());
+        List<ExecuteStepTimeParser.NodeStepTime> nodeSteps = ExecuteStepTimeParser.parse(result.getExecuteStepStrWithTime());
+        if (!nodeSteps.isEmpty())
+        {
+            List<Map<String, Object>> nodeStepList = new ArrayList<>(nodeSteps.size());
+            for (ExecuteStepTimeParser.NodeStepTime item : nodeSteps)
+            {
+                Map<String, Object> row = new HashMap<>(2);
+                row.put("nodeId", item.getNodeId());
+                row.put("timeMs", item.getTimeMs());
+                nodeStepList.add(row);
+            }
+            steps.put("nodeSteps", nodeStepList);
+        }
         log.setStepsJson(JSON.toJSONString(steps));
 
         if (param != null)

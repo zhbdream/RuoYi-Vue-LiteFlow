@@ -150,4 +150,14 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         limit 10
     </select>
 
+    <select id="selectRecentStepTimeLogs" resultMap="LfExecLogResult">
+        select id, chain_name, execute_step_str_with_time, steps_json, create_time
+        from lf_exec_log
+        where create_time &gt;= date_sub(now(), interval #{days} day)
+          and execute_step_str_with_time is not null
+          and execute_step_str_with_time != ''
+        order by id desc
+        limit 2000
+    </select>
+
 </mapper>

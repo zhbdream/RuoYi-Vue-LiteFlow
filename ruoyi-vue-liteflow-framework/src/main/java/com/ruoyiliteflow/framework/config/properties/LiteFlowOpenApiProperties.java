@@ -19,6 +19,12 @@ public class LiteFlowOpenApiProperties
     /** API Key 请求头名称 */
     private String headerName = "X-LiteFlow-Api-Key";
 
+    /**
+     * 是否允许开放 API 执行含 Re-Act Agent 节点的链路。
+     * 默认 false，避免外部调用意外产生 Token 费用。
+     */
+    private boolean allowAgentChains = false;
+
     public boolean isEnabled()
     {
         return enabled;
@@ -47,5 +53,15 @@ public class LiteFlowOpenApiProperties
     public void setHeaderName(String headerName)
     {
         this.headerName = headerName;
+    }
+
+    public boolean isAllowAgentChains()
+    {
+        return allowAgentChains;
+    }
+
+    public void setAllowAgentChains(boolean allowAgentChains)
+    {
+        this.allowAgentChains = allowAgentChains;
     }
 }

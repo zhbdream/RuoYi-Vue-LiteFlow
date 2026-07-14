@@ -10,8 +10,10 @@ import com.ruoyiliteflow.common.exception.ServiceException;
 import com.ruoyiliteflow.common.utils.StringUtils;
 import com.ruoyiliteflow.liteflow.domain.LfChain;
 import com.ruoyiliteflow.liteflow.domain.LfScript;
+import com.ruoyiliteflow.liteflow.domain.LfScriptVersion;
 import com.ruoyiliteflow.liteflow.mapper.LfChainMapper;
 import com.ruoyiliteflow.liteflow.mapper.LfScriptMapper;
+import com.ruoyiliteflow.liteflow.mapper.LfScriptVersionMapper;
 import com.ruoyiliteflow.liteflow.service.ILfScriptService;
 import com.yomahub.liteflow.flow.FlowBus;
 import com.yomahub.liteflow.meta.LiteflowMetaOperator;
@@ -27,6 +29,9 @@ public class LfScriptServiceImpl implements ILfScriptService
 
     @Autowired
     private LfChainMapper lfChainMapper;
+
+    @Autowired
+    private LfScriptVersionMapper lfScriptVersionMapper;
 
     @Override
     public LfScript selectLfScriptById(Long id)
@@ -44,6 +49,10 @@ public class LfScriptServiceImpl implements ILfScriptService
     public int insertLfScript(LfScript lfScript)
     {
         fillDefaults(lfScript);
+        if (lfScript.getVersion() == null || lfScript.getVersion() < 1)
+        {
+            lfScript.setVersion(1);
+        }
         if (!checkScriptIdUnique(lfScript))
         {
             throw new ServiceException("新增脚本'" + lfScript.getScriptId() + "'失败，脚本ID已存在");
@@ -66,12 +75,51 @@ public class LfScriptServiceImpl implements ILfScriptService
             throw new ServiceException("修改脚本'" + lfScript.getScriptId() + "'失败，脚本ID已存在");
         }
         validateScript(lfScript);
+        LfScript old = lfScriptMapper.selectLfScriptById(lfScript.getId());
+        if (old != null && StringUtils.isNotEmpty(old.getScriptData())
+                && !old.getScriptData().equals(lfScript.getScriptData()))
+        {
+            saveScriptVersionSnapshot(old, lfScript.getUpdateBy());
+            int next = (old.getVersion() == null || old.getVersion() < 1) ? 2 : old.getVersion() + 1;
+            lfScript.setVersion(next);
+        }
+        else if (old != null && old.getVersion() != null)
+        {
+            lfScript.setVersion(old.getVersion());
+        }
         int rows = lfScriptMapper.updateLfScript(lfScript);
         if (rows > 0 && isEnabled(lfScript))
         {
             reloadScript(lfScript);
         }
         return rows;
+    }
+
+    @Override
+    public List<LfScriptVersion> selectScriptVersions(Long scriptPk)
+    {
+        return lfScriptVersionMapper.selectByScriptPk(scriptPk);
+    }
+
+    @Override
+    public LfScriptVersion selectScriptVersionById(Long id)
+    {
+        return lfScriptVersionMapper.selectById(id);
+    }
+
+    private void saveScriptVersionSnapshot(LfScript old, String operateBy)
+    {
+        int ver = old.getVersion() == null || old.getVersion() < 1 ? 1 : old.getVersion();
+        LfScriptVersion snap = new LfScriptVersion();
+        snap.setScriptPk(old.getId());
+        snap.setScriptId(old.getScriptId());
+        snap.setVersion(ver);
+        snap.setScriptData(old.getScriptData());
+        snap.setScriptType(old.getScriptType());
+        snap.setScriptLanguage(old.getScriptLanguage());
+        snap.setPublishBy(StringUtils.isNotEmpty(operateBy) ? operateBy : old.getUpdateBy());
+        snap.setRemark("脚本保存前快照 v" + ver);
+        lfScriptVersionMapper.insert(snap);
     }
 
     @Override
@@ -256,6 +304,10 @@ public class LfScriptServiceImpl implements ILfScriptService
         if (lfScript.getEnable() == null)
         {
             lfScript.setEnable(1);
+        }
+        if (lfScript.getVersion() == null)
+        {
+            lfScript.setVersion(1);
         }
         if (StringUtils.isEmpty(lfScript.getScriptName()))
         {

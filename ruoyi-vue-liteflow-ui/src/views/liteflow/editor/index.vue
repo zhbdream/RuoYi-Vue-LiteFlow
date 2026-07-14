@@ -54,6 +54,8 @@
       :chain-options="chainOptions"
       :component-loading="componentLoading"
       :log-highlight="logHighlight"
+      :readonly="liteflowReadonly"
+      :readonly-message="liteflowReadonlyMessage"
       @back="goChainList"
       @reload="handleReload"
       @save="handleSave"
@@ -63,6 +65,7 @@
 </template>
 
 <script>
+import { mapGetters } from 'vuex'
 import LiteFlowEditor from '@/components/LiteFlowEditor/index.vue'
 import { listChain, getChain, getChainByName, updateChain, reloadChain, listComponent } from '@/api/liteflow/chain'
 
@@ -89,6 +92,7 @@ export default {
     }
   },
   computed: {
+    ...mapGetters(['liteflowReadonly', 'liteflowReadonlyMessage']),
     logHighlight() {
       const q = this.$route.query
       if (!q.highlightSteps) {

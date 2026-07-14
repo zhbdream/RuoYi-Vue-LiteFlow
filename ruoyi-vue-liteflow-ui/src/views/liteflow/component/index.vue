@@ -10,6 +10,8 @@
           <el-option label="布尔 boolean" value="boolean" />
           <el-option label="选择 switch" value="switch" />
           <el-option label="循环 for" value="for" />
+          <el-option label="Agent agent" value="agent" />
+          <el-option label="声明式 declarative" value="declarative" />
         </el-select>
       </el-form-item>
       <el-form-item>
@@ -22,13 +24,16 @@
       <el-col :span="1.5">
         <el-button type="primary" plain icon="el-icon-refresh" size="mini" @click="getList">刷新扫描</el-button>
       </el-col>
+      <el-col :span="1.5">
+        <el-button type="success" plain icon="el-icon-document-add" size="mini" @click="openScaffold">生成脚手架</el-button>
+      </el-col>
       <right-toolbar :showSearch.sync="showSearch" @queryTable="getList" />
     </el-row>
 
     <el-table v-loading="loading" :data="filteredList">
       <el-table-column label="节点ID" prop="nodeId" min-width="140" :show-overflow-tooltip="true" />
       <el-table-column label="名称" prop="name" min-width="120" />
-      <el-table-column label="类型" prop="nodeType" width="100" align="center">
+      <el-table-column label="类型" prop="nodeType" width="110" align="center">
         <template slot-scope="scope">
           <el-tag size="mini">{{ scope.row.nodeType }}</el-tag>
         </template>
@@ -57,11 +62,49 @@
         <el-button @click="detailOpen = false">关 闭</el-button>
       </div>
     </el-dialog>
+
+    <el-dialog title="生成组件脚手架" :visible.sync="scaffoldOpen" width="820px" append-to-body>
+      <el-form ref="scaffoldForm" :model="scaffoldForm" :rules="scaffoldRules" label-width="100px" size="small">
+        <el-form-item label="nodeId" prop="nodeId">
+          <el-input v-model="scaffoldForm.nodeId" placeholder="如 myValidate" />
+        </el-form-item>
+        <el-form-item label="组件类型" prop="nodeType">
+          <el-select v-model="scaffoldForm.nodeType" style="width:100%">
+            <el-option label="普通 common" value="common" />
+            <el-option label="布尔 boolean" value="boolean" />
+            <el-option label="选择 switch" value="switch" />
+            <el-option label="循环 for" value="for" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="风格" prop="style">
+          <el-radio-group v-model="scaffoldForm.style">
+            <el-radio label="inherited">继承式</el-radio>
+            <el-radio label="declarative">声明式</el-radio>
+          </el-radio-group>
+        </el-form-item>
+        <el-form-item label="包名" prop="packageName">
+          <el-input v-model="scaffoldForm.packageName" placeholder="com.ruoyiliteflow.liteflow.component" />
+        </el-form-item>
+      </el-form>
+      <el-input
+        v-if="scaffoldSource"
+        type="textarea"
+        :rows="16"
+        :value="scaffoldSource"
+        readonly
+        class="scaffold-source"
+      />
+      <div slot="footer" class="dialog-footer">
+        <el-button type="primary" @click="generateScaffold">生 成</el-button>
+        <el-button v-if="scaffoldSource" @click="copyScaffold">复制源码</el-button>
+        <el-button @click="scaffoldOpen = false">关 闭</el-button>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
 <script>
-import { listComponentCenter } from '@/api/liteflow/platform'
+import { listComponentCenter, generateComponentScaffold } from '@/api/liteflow/platform'
 
 export default {
   name: 'LfComponentCenter',
@@ -75,6 +118,18 @@ export default {
       queryParams: {
         nodeId: undefined,
         nodeType: undefined
+      },
+      scaffoldOpen: false,
+      scaffoldSource: '',
+      scaffoldFileName: '',
+      scaffoldForm: {
+        nodeId: '',
+        nodeType: 'common',
+        style: 'inherited',
+        packageName: 'com.ruoyiliteflow.liteflow.component'
+      },
+      scaffoldRules: {
+        nodeId: [{ required: true, message: 'nodeId 不能为空', trigger: 'blur' }]
       }
     }
   },
@@ -101,7 +156,7 @@ export default {
       })
     },
     handleQuery() {
-      // 前端过滤，无需请求
+      // 前端过滤
     },
     resetQuery() {
       this.queryParams = { nodeId: undefined, nodeType: undefined }
@@ -109,7 +164,52 @@ export default {
     showDetail(row) {
       this.current = row
       this.detailOpen = true
+    },
+    openScaffold() {
+      this.scaffoldSource = ''
+      this.scaffoldFileName = ''
+      this.scaffoldOpen = true
+    },
+    generateScaffold() {
+      this.$refs.scaffoldForm.validate(valid => {
+        if (!valid) return
+        generateComponentScaffold(this.scaffoldForm).then(res => {
+          const data = res.data || {}
+          this.scaffoldSource = data.source || ''
+          this.scaffoldFileName = data.fileName || 'Component.java'
+          this.$modal.msgSuccess('已生成 ' + this.scaffoldFileName)
+        })
+      })
+    },
+    copyScaffold() {
+      if (!this.scaffoldSource) return
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(this.scaffoldSource).then(() => {
+          this.$modal.msgSuccess('已复制到剪贴板')
+        }).catch(() => {
+          this.fallbackCopy(this.scaffoldSource)
+        })
+      } else {
+        this.fallbackCopy(this.scaffoldSource)
+      }
+    },
+    fallbackCopy(text) {
+      const el = document.createElement('textarea')
+      el.value = text
+      document.body.appendChild(el)
+      el.select()
+      document.execCommand('copy')
+      document.body.removeChild(el)
+      this.$modal.msgSuccess('已复制到剪贴板')
     }
   }
 }
 </script>
+
+<style scoped>
+.scaffold-source ::v-deep textarea {
+  font-family: Consolas, Monaco, monospace;
+  font-size: 12px;
+  margin-top: 8px;
+}
+</style>

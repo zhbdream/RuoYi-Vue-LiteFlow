@@ -1,8 +1,11 @@
--- 按顺序导入（容器首次启动时由 docker-entrypoint-initdb.d 执行）
--- 1. ry_20260417.sql
--- 2. quartz.sql
--- 3. liteflow.sql
--- 4. liteflow_phase2*.sql / liteflow_phase3*.sql
+# MySQL 初始化（Docker）
 
--- 请将上述 SQL 文件复制到本目录，或手动挂载后执行。
--- 本地开发仍推荐按 README 手动导入。
+请将仓库根目录的全量脚本复制到本目录（或挂载），例如：
+
+```bash
+cp ../../sql/ry-vue.sql ./01-ry-vue.sql
+```
+
+容器首次启动时，`docker-entrypoint-initdb.d` 会按文件名顺序执行。
+
+本地开发仍推荐按根目录 [README](../../README.md) 手动导入 `sql/ry-vue.sql`。

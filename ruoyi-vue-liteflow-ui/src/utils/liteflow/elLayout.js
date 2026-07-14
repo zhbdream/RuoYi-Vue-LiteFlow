@@ -104,6 +104,7 @@ function layoutSubChain(modelNode, x, y, compMap) {
 function makeComponentCell(modelNode, x, y, compMap) {
   const meta = compMap[modelNode.nodeId] || {}
   const cellId = nextCellId(modelNode.nodeId || 'comp')
+  const isAgent = meta.nodeType === 'agent'
   return {
     cellId,
     x,
@@ -111,16 +112,19 @@ function makeComponentCell(modelNode, x, y, compMap) {
     width: NODE_W,
     height: NODE_H,
     shape: 'rect',
-    label: modelNode.nodeId,
+    label: isAgent ? `[Agent] ${modelNode.nodeId}` : modelNode.nodeId,
     data: {
       lfType: 'component',
       modelKey: modelNode._key,
       nodeId: modelNode.nodeId,
       name: modelNode.name || meta.name || modelNode.nodeId,
-      remark: modelNode.remark || ''
+      remark: modelNode.remark || '',
+      nodeType: meta.nodeType || 'common'
     },
     attrs: {
-      body: { stroke: '#409EFF', fill: '#ecf5ff', rx: 6, ry: 6 },
+      body: isAgent
+        ? { stroke: '#13C2C2', fill: '#e6fffb', rx: 6, ry: 6 }
+        : { stroke: '#409EFF', fill: '#ecf5ff', rx: 6, ry: 6 },
       label: { fill: '#303133', fontSize: 13, fontWeight: 600 }
     },
     ports: compPorts()

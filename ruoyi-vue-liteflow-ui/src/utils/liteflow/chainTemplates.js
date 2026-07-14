@@ -50,6 +50,13 @@ export const CHAIN_TEMPLATES = [
     chainDesc: 'FOR 循环 Demo6',
     elData: 'THEN(initBatch, FOR(batchCount).DO(processOrderItem), summarizeBatch);',
     contextClass: 'com.ruoyiliteflow.liteflow.domain.context.BatchContext'
+  },
+  {
+    key: 'agentRiskDemo',
+    label: 'agentRiskDemo 风控Agent',
+    chainDesc: 'DeepSeek Re-Act Agent Demo7（需 DEEPSEEK_API_KEY）',
+    elData: 'THEN(agentPrepare, riskAgent, agentNotify);',
+    contextClass: 'com.ruoyiliteflow.agent.domain.AgentRiskContext'
   }
 ]
 
@@ -86,6 +93,13 @@ export const DEMO_EXECUTE_PARAMS = {
   },
   routeDemo: {
     userType: 'NEW'
+  },
+  agentRiskDemo: {
+    orderId: 'ORD-AGENT-1001',
+    userId: 1001,
+    userType: 'NEW',
+    amount: 1299.00,
+    scene: 'checkout'
   }
 }
 

@@ -13,6 +13,7 @@ import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 import com.ruoyiliteflow.common.config.RuoYiConfig;
 import com.ruoyiliteflow.common.constant.Constants;
+import com.ruoyiliteflow.framework.interceptor.LiteFlowReadonlyInterceptor;
 import com.ruoyiliteflow.framework.interceptor.RepeatSubmitInterceptor;
 
 /**
@@ -25,6 +26,9 @@ public class ResourcesConfig implements WebMvcConfigurer
 {
     @Autowired
     private RepeatSubmitInterceptor repeatSubmitInterceptor;
+
+    @Autowired
+    private LiteFlowReadonlyInterceptor liteFlowReadonlyInterceptor;
 
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry)
@@ -46,6 +50,7 @@ public class ResourcesConfig implements WebMvcConfigurer
     public void addInterceptors(InterceptorRegistry registry)
     {
         registry.addInterceptor(repeatSubmitInterceptor).addPathPatterns("/**");
+        registry.addInterceptor(liteFlowReadonlyInterceptor).addPathPatterns("/liteflow/**");
     }
 
     /**

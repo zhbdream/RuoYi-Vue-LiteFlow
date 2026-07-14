@@ -13,6 +13,7 @@ import com.ruoyiliteflow.common.annotation.Anonymous;
 import com.ruoyiliteflow.common.core.controller.BaseController;
 import com.ruoyiliteflow.common.core.domain.AjaxResult;
 import com.ruoyiliteflow.common.core.domain.model.LoginUser;
+import com.ruoyiliteflow.common.exception.ServiceException;
 import com.ruoyiliteflow.common.utils.SecurityUtils;
 import com.ruoyiliteflow.common.utils.StringUtils;
 import com.ruoyiliteflow.framework.config.properties.LiteFlowOpenApiProperties;
@@ -45,17 +46,22 @@ public class LiteFlowOpenExecuteController extends BaseController
         return success(Map.of(
                 "enabled", openApiProperties.isEnabled(),
                 "headerName", openApiProperties.getHeaderName(),
+                "allowAgentChains", openApiProperties.isAllowAgentChains(),
                 "executePath", "POST /liteflow/open/execute/{chainName}",
                 "auth", "X-LiteFlow-Api-Key 或 Bearer Token（需 liteflow:open:execute 权限）"));
     }
 
-    @Operation(summary = "执行链路（开放 API）", description = "仅已发布且启用的链路可执行；执行记录写入 lf_exec_log")
+    @Operation(summary = "执行链路（开放 API）", description = "仅已发布且启用的链路可执行；含 Agent 的链路默认禁止；执行记录写入 lf_exec_log")
     @PostMapping("/execute/{chainName}")
     public AjaxResult execute(
             @Parameter(description = "链路 ID，如 helloChain、orderProcess") @PathVariable String chainName,
             @RequestBody(required = false) Map<String, Object> param,
             HttpServletRequest request)
     {
+        if (!openApiProperties.isAllowAgentChains() && liteFlowExecuteService.chainContainsAgent(chainName))
+        {
+            throw new ServiceException("开放 API 默认禁止执行含 Agent 的链路，请改用后台试跑，或配置 liteflow.open-api.allow-agent-chains=true");
+        }
         String createBy = resolveCreateBy(request);
         boolean bypassChainPermission = "api-key".equals(request.getAttribute(LiteFlowOpenApiAuthFilter.OPEN_API_AUTH_ATTR));
         return success(liteFlowExecuteService.execute(chainName, param, createBy, bypassChainPermission));

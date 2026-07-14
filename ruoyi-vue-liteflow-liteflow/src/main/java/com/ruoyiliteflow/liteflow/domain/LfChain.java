@@ -51,6 +51,9 @@ public class LfChain extends BaseEntity
     /** 决策路由 namespace（可选） */
     private String namespace;
 
+    /** 执行完成 Webhook 回调地址（可选，优先于全局配置） */
+    private String webhookUrl;
+
     public Long getId()
     {
         return id;
@@ -187,6 +190,17 @@ public class LfChain extends BaseEntity
         this.namespace = namespace;
     }
 
+    @Size(max = 512, message = "Webhook URL 长度不能超过512个字符")
+    public String getWebhookUrl()
+    {
+        return webhookUrl;
+    }
+
+    public void setWebhookUrl(String webhookUrl)
+    {
+        this.webhookUrl = webhookUrl;
+    }
+
     @Override
     public String toString()
     {
@@ -201,6 +215,7 @@ public class LfChain extends BaseEntity
             .append("draftFlag", getDraftFlag())
             .append("version", getVersion())
             .append("contextClass", getContextClass())
+            .append("webhookUrl", getWebhookUrl())
             .append("createBy", getCreateBy())
             .append("createTime", getCreateTime())
             .append("updateBy", getUpdateBy())

@@ -13,6 +13,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="scriptType"      column="script_type"      />
         <result property="scriptLanguage"  column="script_language"  />
         <result property="enable"          column="enable"           />
+        <result property="version"         column="version"          />
         <result property="createBy"        column="create_by"        />
         <result property="createTime"      column="create_time"      />
         <result property="updateBy"        column="update_by"        />
@@ -22,7 +23,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 
     <sql id="selectLfScriptVo">
         select id, application_name, script_id, script_name, script_data, script_type,
-               script_language, enable, create_by, create_time, update_by, update_time, remark
+               script_language, enable, version, create_by, create_time, update_by, update_time, remark
         from lf_script
     </sql>
 
@@ -58,10 +59,10 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     <insert id="insertLfScript" parameterType="com.ruoyiliteflow.liteflow.domain.LfScript" useGeneratedKeys="true" keyProperty="id">
         insert into lf_script (
             application_name, script_id, script_name, script_data, script_type,
-            script_language, enable, create_by, create_time, remark
+            script_language, enable, version, create_by, create_time, remark
         ) values (
             #{applicationName}, #{scriptId}, #{scriptName}, #{scriptData}, #{scriptType},
-            #{scriptLanguage}, #{enable}, #{createBy}, sysdate(), #{remark}
+            #{scriptLanguage}, #{enable}, #{version}, #{createBy}, sysdate(), #{remark}
         )
     </insert>
 
@@ -75,6 +76,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="scriptType != null and scriptType != ''">script_type = #{scriptType},</if>
             <if test="scriptLanguage != null and scriptLanguage != ''">script_language = #{scriptLanguage},</if>
             <if test="enable != null">enable = #{enable},</if>
+            <if test="version != null">version = #{version},</if>
             <if test="updateBy != null and updateBy != ''">update_by = #{updateBy},</if>
             <if test="remark != null">remark = #{remark},</if>
             update_time = sysdate()

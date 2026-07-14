@@ -147,11 +147,47 @@ curl -X POST "http://localhost:8080/liteflow/open/execute/orderProcess" \
 
 ```yaml
 liteflow:
+  # 生产只读：true 时禁止链路/脚本/版本回滚等写操作，执行与试跑仍可用
+  readonly:
+    enabled: false
+    message: 当前环境为只读模式，禁止修改规则/脚本
   open-api:
     enabled: true
     api-key: ruoyi-liteflow-open-key-change-me   # 生产环境务必修改
     header-name: X-LiteFlow-Api-Key
+    allow-agent-chains: false                    # 含 Agent 链路默认禁止开放执行
 ```
+
+前端可通过 `GET /liteflow/config` 读取 `{ readonly, readonlyMessage, agentConfigured, openApiAllowAgentChains }`。
+
+### Webhook 回调
+
+链路执行（入库后）可异步 HTTP POST 结果 JSON。
+
+```yaml
+liteflow:
+  webhook:
+    enabled: false          # 全局开关；链路填写 webhookUrl 时可不依赖 enabled
+    url: https://example.com/hook
+    only-on-failure: false
+    connect-timeout-ms: 3000
+    read-timeout-ms: 5000
+```
+
+优先级：**链路 `webhookUrl` > 全局 `liteflow.webhook.url`（需 enabled）**。EL 在线调试不回调。
+
+Payload 字段示例：`event`、`chainName`、`requestId`、`success`、`durationMs`、`executeStepStr`、`failedNodeId`、`logId`、`param`。
+
+### 定时执行（Quartz）
+
+在「系统监控 → 定时任务」中配置调用目标（bean 位于 `com.ruoyiliteflow.quartz.task`）：
+
+| invokeTarget 示例 | 说明 |
+|-------------------|------|
+| `liteFlowTask.executeByName('helloChain')` | 无参执行链路 |
+| `liteFlowTask.executeByName('orderProcess', '{"userId":1001,"skuId":"SKU-001","quantity":2,"payType":"wechat"}')` | 带 JSON 参数 |
+
+执行结果写入 `lf_exec_log`，`create_by` 为 `quartz`。
 
 ### 2.4 执行前置条件
 
@@ -187,6 +223,29 @@ Content-Type: application/json
 请求体、响应结构与开放 API 相同。执行记录写入 `lf_exec_log`，`create_by` 为当前登录用户名。
 
 **链路级权限：** 若已配置，当前用户角色须具备「可执行」权限（admin 不受限）。
+
+### 3.0 流式试跑（SSE，Phase 4）
+
+```http
+POST /liteflow/execute/stream/{chainName}
+Authorization: Bearer <token>
+Content-Type: application/json
+Accept: text/event-stream
+```
+
+**权限：** `liteflow:execute`
+
+服务端推送 `text/event-stream` 事件：
+
+| event | 说明 |
+|-------|------|
+| `agent.reasoning` | Agent 推理/回复增量 |
+| `agent.tool_result` | 工具调用结果 |
+| `agent.result` | 本轮最终 Agent 文本 |
+| `done` | 整链结果（同同步试跑的 data） |
+| `error` | 执行异常 |
+
+前端：链路管理 → 试跑 → 打开「SSE（Agent 推理过程）」。
 
 ### 3.1 决策路由执行（Phase 3）
 
@@ -326,7 +385,7 @@ Authorization: Bearer <token>
 | `failTop` | 失败 Top 10（按链路 + 错误信息聚合） |
 | `slowTop` | 慢调用 Top 10（按 `durationMs` 排序） |
 
-**增量 SQL：** `sql/liteflow_phase3_dashboard.sql`
+> 表结构与菜单已包含在全量脚本 [sql/ry-vue.sql](../sql/ry-vue.sql) 中。
 
 ---
 
@@ -380,7 +439,7 @@ Authorization: Bearer <token>
 
 传空 `permissions` 数组 = 清除限制，恢复仅菜单权限控制。
 
-**增量 SQL：** `sql/liteflow_phase2f_permission.sql`
+> 权限相关表结构已包含在全量脚本 [sql/ry-vue.sql](../sql/ry-vue.sql) 中。
 
 ---
 
@@ -424,6 +483,7 @@ Authorization: Bearer <token>
 |------------------|------|
 | 401 | 开放 API 未携带有效 Key 或 Token |
 | 403 | 开放 API 功能未启用（`liteflow.open-api.enabled=false`） |
+| 500 | 含 Agent 的链路走开放 API 且 `allow-agent-chains=false`（业务 ServiceException） |
 | 500 + msg | 业务异常：链路不存在、无权限、未发布等 |
 
 ---

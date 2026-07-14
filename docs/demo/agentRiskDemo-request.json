@@ -1,0 +1,11 @@
+{
+  "chainId": "agentRiskDemo",
+  "param": {
+    "orderId": "ORD-AGENT-1001",
+    "userId": 1001,
+    "userType": "NEW",
+    "amount": 1299.00,
+    "scene": "checkout"
+  },
+  "note": "需配置环境变量 DEEPSEEK_API_KEY，并保证 DeepSeek 账户余额可用。EL=THEN(agentPrepare, riskAgent, agentNotify)"
+}

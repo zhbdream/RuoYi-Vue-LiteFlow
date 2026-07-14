@@ -12,16 +12,18 @@
         <el-button size="mini" icon="el-icon-back" @click="$emit('back')">返回</el-button>
         <el-button size="mini" icon="el-icon-video-play" @click="openTestRun" v-hasPermi="['liteflow:execute']">试跑</el-button>
         <el-button size="mini" icon="el-icon-cpu" @click="openElDebug" v-hasPermi="['liteflow:execute']">EL试跑</el-button>
-        <el-button size="mini" :disabled="!canUndo" @click="undo">撤销</el-button>
-        <el-button size="mini" :disabled="!canRedo" @click="redo">重做</el-button>
+        <el-button size="mini" :disabled="!canUndo || readonly" @click="undo">撤销</el-button>
+        <el-button size="mini" :disabled="!canRedo || readonly" @click="redo">重做</el-button>
+        <el-button size="mini" icon="el-icon-rank" :disabled="!flowModel" @click="autoLayout">自动布局</el-button>
         <el-button size="mini" icon="el-icon-document-copy" @click="copyEl">复制 EL</el-button>
         <el-button size="mini" @click="handleValidate">校验 EL</el-button>
-        <el-button size="mini" icon="el-icon-delete" @click="clearCanvas">清空</el-button>
-        <el-button size="mini" icon="el-icon-refresh" @click="$emit('reload')" v-hasPermi="['liteflow:chain:reload']">热刷新</el-button>
-        <el-button type="primary" size="mini" icon="el-icon-check" @click="handleSave" v-hasPermi="['liteflow:editor:save', 'liteflow:chain:edit']">保存</el-button>
+        <el-button size="mini" icon="el-icon-delete" :disabled="readonly" @click="clearCanvas">清空</el-button>
+        <el-button size="mini" icon="el-icon-refresh" :disabled="readonly" @click="$emit('reload')" v-hasPermi="['liteflow:chain:reload']">热刷新</el-button>
+        <el-button type="primary" size="mini" icon="el-icon-check" :disabled="readonly" @click="handleSave" v-hasPermi="['liteflow:editor:save', 'liteflow:chain:edit']">保存</el-button>
       </div>
     </div>
 
+    <el-alert v-if="readonly" :title="readonlyMessage || '当前环境为只读模式，禁止保存与热刷新'" type="info" show-icon :closable="false" class="lf-editor-alert" />
     <el-alert v-if="elWarning" :title="elWarning" type="warning" show-icon :closable="false" class="lf-editor-alert" />
 
     <el-alert v-if="validateResult" :title="validateResult" :type="validateResultType" show-icon :closable="true" @close="validateResult=''" class="lf-editor-alert" />
@@ -124,6 +126,7 @@
 
       <div class="graph-wrap" ref="graphWrap" @click="hideContextMenu">
         <div ref="graphContainer" class="graph-container"></div>
+        <div ref="minimapContainer" class="lf-minimap"></div>
         <ul
           v-show="contextMenu.visible"
           class="graph-context-menu"
@@ -245,7 +248,7 @@
     </div>
 
     <div v-show="editMode === 'el'" class="el-text-mode">
-      <el-input v-model="elTextDraft" type="textarea" :rows="22" placeholder="直接编辑 EL，切换回可视化时将尝试解析" />
+      <el-input v-model="elTextDraft" type="textarea" :rows="22" :readonly="readonly" placeholder="直接编辑 EL，切换回可视化时将尝试解析" />
       <p class="panel-tip">高级模式：编辑完成后切回「可视化」或点保存（会先解析 EL）。</p>
     </div>
 
@@ -308,6 +311,7 @@
 
 <script>
 import { Graph } from '@antv/x6'
+import { MiniMap } from '@antv/x6-plugin-minimap'
 import { NODE_TYPE_LABELS } from '@/utils/liteflow/elThen'
 import {
   parseEl,
@@ -326,7 +330,7 @@ import { validateFlowModel } from '@/utils/liteflow/elValidate'
 import { validateEl, executeChain, executeEl } from '@/api/liteflow/chain'
 import { getDefaultExecuteParam } from '@/utils/liteflow/chainTemplates'
 
-const GROUP_ORDER = ['common', 'boolean', 'switch', 'for', 'iterator', 'unknown']
+const GROUP_ORDER = ['common', 'agent', 'boolean', 'switch', 'for', 'iterator', 'declarative', 'unknown']
 
 export default {
   name: 'LiteFlowEditor',
@@ -338,7 +342,9 @@ export default {
     graphJson: { type: String, default: '' },
     components: { type: Array, default: () => [] },
     componentLoading: { type: Boolean, default: false },
-    logHighlight: { type: Object, default: null }
+    logHighlight: { type: Object, default: null },
+    readonly: { type: Boolean, default: false },
+    readonlyMessage: { type: String, default: '' }
   },
   data() {
     return {
@@ -361,7 +367,7 @@ export default {
       leftPanelTab: 'component',
       componentKeyword: '',
       chainKeyword: '',
-      expandedGroups: ['common', 'boolean', 'switch'],
+      expandedGroups: ['common', 'agent', 'boolean', 'switch'],
       contextMenu: { visible: false, x: 0, y: 0 },
       contextMenuType: 'node',
       nodeClipboard: null,
@@ -550,29 +556,33 @@ export default {
     groupIcon(type) {
       const icons = {
         common: 'el-icon-cpu',
+        agent: 'el-icon-magic-stick',
         boolean: 'el-icon-question',
         switch: 'el-icon-s-operation',
         for: 'el-icon-refresh-right',
-        iterator: 'el-icon-sort'
+        iterator: 'el-icon-sort',
+        declarative: 'el-icon-document'
       }
       return icons[type] || 'el-icon-menu'
     },
     groupColor(type) {
       const colors = {
         common: '#409EFF',
+        agent: '#13C2C2',
         boolean: '#E6A23C',
         switch: '#67C23A',
         for: '#9C27B0',
-        iterator: '#909399'
+        iterator: '#909399',
+        declarative: '#722ED1'
       }
       return colors[type] || '#909399'
     },
     groupTagType(type) {
-      const types = { common: '', boolean: 'warning', switch: 'success', for: 'danger', iterator: 'info' }
+      const types = { common: '', agent: '', boolean: 'warning', switch: 'success', for: 'danger', iterator: 'info', declarative: 'info' }
       return types[type] || 'info'
     },
     groupShortLabel(type) {
-      const labels = { common: '普通', boolean: '布尔', switch: '选择', for: '循环', iterator: '迭代' }
+      const labels = { common: '普通', agent: 'Agent', boolean: '布尔', switch: '选择', for: '循环', iterator: '迭代', declarative: '声明式' }
       return labels[type] || '其他'
     },
     formatComponentLabel(comp) {
@@ -610,6 +620,19 @@ export default {
           router: 'orth'
         }
       })
+      const minimapEl = this.$refs.minimapContainer
+      if (minimapEl) {
+        minimapEl.innerHTML = ''
+        graph.use(new MiniMap({
+          container: minimapEl,
+          width: 180,
+          height: 120,
+          padding: 8,
+          scalable: false,
+          minScale: 0.01,
+          maxScale: 1
+        }))
+      }
       this.graph = graph
       graph.on('node:click', ({ node }) => {
         const key = node.getData() && node.getData().modelKey
@@ -1572,6 +1595,20 @@ export default {
       }
     },
 
+    autoLayout() {
+      if (!this.flowModel) {
+        return
+      }
+      this.pushHistory()
+      this.renderFromModel(true)
+      this.$nextTick(() => {
+        if (this.graph) {
+          this.graph.centerContent()
+        }
+      })
+      this.$message.success('已按流程模型重新布局')
+    },
+
     renderFromModel(keepSelection = true) {
       if (!this.graph || !this.flowModel) {
         return
@@ -1745,6 +1782,10 @@ export default {
     },
 
     handleSave() {
+      if (this.readonly) {
+        this.$modal.msgWarning(this.readonlyMessage || '当前环境为只读模式，禁止保存')
+        return
+      }
       if (this.editMode === 'el') {
         const model = parseEl(this.elTextDraft)
         if (!model) {
@@ -2146,6 +2187,21 @@ export default {
   flex: 1;
   min-width: 0;
   position: relative;
+}
+
+.lf-minimap {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  width: 180px;
+  height: 120px;
+  z-index: 5;
+  border: 1px solid #dcdfe6;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+  pointer-events: auto;
 }
 
 .graph-context-menu {

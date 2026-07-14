@@ -6,13 +6,22 @@
 </p>
 
 <p align="center">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License"/></a>
+  <a href="https://www.oracle.com/java/"><img src="https://img.shields.io/badge/JDK-17+-orange.svg" alt="JDK"/></a>
+  <a href="https://liteflow.cc/"><img src="https://img.shields.io/badge/LiteFlow-2.16.0-brightgreen.svg" alt="LiteFlow"/></a>
+  <a href="https://spring.io/projects/spring-boot"><img src="https://img.shields.io/badge/Spring%20Boot-4.0.6-green.svg" alt="Spring Boot"/></a>
+</p>
+
+<p align="center">
   <strong>开箱即用的 Java 业务编排中台</strong><br/>
   若依权限后台 + LiteFlow 2.16 规则引擎 + AntV X6 可视化编排
 </p>
 
 <p align="center">
-  拖拽画流程 · EL 双向同步 · 规则热更新 · 执行监控 · 开放 API
+  拖拽画流程 · EL 双向同步 · 规则热更新 · AI Agent · 执行监控 · 开放 API
 </p>
+
+> Gitee / GitHub 内容同步镜像。提 Issue、PR 任选其一即可。
 
 ---
 
@@ -36,9 +45,14 @@
 | **脚本 & 组件** | Groovy / QLExpress 脚本管理，组件中心与引用分析 |
 | **开放集成** | `/liteflow/open/execute` + API Key / Token 鉴权 |
 | **权限 & 审计** | 菜单 RBAC、链路级执行/编排权限、规则变更审计 |
-| **监控** | 成功率、调用趋势、链路 Top、慢调用 / 失败 Top |
+| **监控** | 成功率、调用趋势、链路 Top、慢调用 / 失败 Top、慢节点 Top |
 | **决策路由** | `executeRouteChain` + Demo5（新客 / 老客促销路由） |
 | **子链路** | 编排器引用已发布 chain，复用复杂流程 |
+| **生产只读** | `liteflow.readonly.enabled` 禁止改规则，执行仍可用 |
+| **定时执行** | Quartz `liteFlowTask.executeByName` 定时跑 chain |
+| **Webhook** | 执行完成 HTTP 回调（全局 / 链路级 URL） |
+| **组件脚手架** | 组件中心一键生成继承式 / 声明式 Java 源码 |
+| **AI Agent** | DeepSeek Re-Act 节点，可与普通组件混编（模型 Key 加密入库） |
 
 ---
 
@@ -92,10 +106,15 @@ flowchart TB
     LF[LiteFlow FlowExecutor]
   end
 
+  subgraph Agent["ruoyi-vue-liteflow-agent"]
+    ReAct[Re-Act Agent / Tools]
+  end
+
   subgraph Store["MySQL"]
     ChainTbl[(lf_chain)]
     ScriptTbl[(lf_script)]
     LogTbl[(lf_exec_log)]
+    ModelTbl[(lf_agent_model)]
   end
 
   UI --> API
@@ -103,9 +122,11 @@ flowchart TB
   API --> Svc
   OpenAPI --> Svc
   Svc --> LF
+  LF --> ReAct
   LF --> ChainTbl
   LF --> ScriptTbl
   Svc --> LogTbl
+  ReAct --> ModelTbl
 ```
 
 **数据约定：** `lf_chain.el_data` 为执行权威；`graph_json` 为画布快照。发布后才热刷新生效。
@@ -148,12 +169,12 @@ flowchart TB
 ### 2. 初始化数据库
 
 ```bash
-mysql -u root -p ry-vue < sql/ry_vue.sql
+mysql -u root -p ry-vue < sql/ry-vue.sql
 ```
 
-修改 `ruoyi-vue-liteflow-admin/src/main/resources/application-druid.yml` 中的数据库与 Redis 连接。
+全量脚本已包含若依基础表、LiteFlow 表、Demo 链路（含 Agent / 决策路由）与菜单。修改 `ruoyi-vue-liteflow-admin/src/main/resources/application-druid.yml` 中的数据库与 Redis 连接。
 
-> **安全提示：** 生产环境请修改 `application.yml` 中 `liteflow.open-api.api-key` 默认值。
+> **安全提示：** 生产环境请修改 `application.yml` 中 `liteflow.open-api.api-key` 默认值；Agent Key 勿写入仓库，用「模型配置」或环境变量。
 
 ### 3. 启动后端
 
@@ -193,8 +214,10 @@ npm run dev
 | `resilientNotify` | CATCH · RETRY | 容错与重试 |
 | `batchProcess` | FOR | 批量循环处理 |
 | `newCustomerPromo` / `returningCustomerPromo` | 决策路由 | namespace=`routeDemo`，见下方 |
+| `fallbackDemo` | 声明式 · FallbackCmp | `node("ghostNode")` 降级为 `fallbackCommon` |
+| `agentRiskDemo` | Re-Act Agent | DeepSeek 风控节点（需 `DEEPSEEK_API_KEY`） |
 
-样例请求 JSON：[docs/demo/](docs/demo/README.md)
+样例请求 JSON：[docs/demo/](docs/demo/README.md) · Agent 说明：[docs/AGENT.md](docs/AGENT.md)
 
 **决策路由试跑：** 链路管理 → **决策路由试跑**
 
@@ -210,12 +233,25 @@ npm run dev
 
 ---
 
+## AI Agent
+
+把 DeepSeek（OpenAI 兼容）封装为链路中的 Re-Act Agent 节点，可与普通组件混编。全新导入 `sql/ry-vue.sql` 后即可使用 Demo。
+
+1. 配置 Key（推荐）：**LiteFlow编排 → 模型配置** 新增并设为默认；或环境变量 `DEEPSEEK_API_KEY`
+2. 后台试跑链路 `agentRiskDemo`（建议勿默认走开放 API）
+
+开放 API 默认 **禁止** 含 Agent 的链路（`liteflow.open-api.allow-agent-chains=false`）。详见 [docs/AGENT.md](docs/AGENT.md)。
+
+---
+
 ## 文档
 
 | 文档 | 说明 |
 |------|------|
+| [docs/HOME.md](docs/HOME.md) | 文档索引入口 |
 | [docs/EDITOR.md](docs/EDITOR.md) | 可视化编排器使用指南 |
-| [docs/API.md](docs/API.md) | 内部 / 开放执行 API |
+| [docs/API.md](docs/API.md) | 内部 / 开放执行 API / Webhook |
+| [docs/AGENT.md](docs/AGENT.md) | Re-Act Agent（DeepSeek） |
 | [docs/demo/](docs/demo/README.md) | Demo 请求样例 |
 
 Swagger：启动后访问 `/swagger-ui.html`，分组 **LiteFlow编排** / **LiteFlow开放API**。
@@ -227,6 +263,7 @@ Swagger：启动后访问 `/swagger-ui.html`，分组 **LiteFlow编排** / **Lit
 ```
 RuoYi-Vue-LiteFlow/
 ├── ruoyi-vue-liteflow-liteflow/   # LiteFlow 核心：组件、链路、执行、审计
+├── ruoyi-vue-liteflow-agent/      # Re-Act Agent（DeepSeek）扩展模块
 ├── ruoyi-vue-liteflow-admin/      # Spring Boot 启动与 REST API
 ├── ruoyi-vue-liteflow-ui/         # Vue 管理前端（含 LiteFlowEditor）
 ├── sql/                           # 初始化与增量 SQL
@@ -261,6 +298,7 @@ docker compose up -d --build
 | 规则审计 | EL 变更记录 |
 | 版本历史 | 快照、diff、回滚 |
 | 监控仪表盘 | 成功率与 Top 排行 |
+| 模型配置 | Agent 模型与加密 API Key |
 
 ---
 
@@ -276,7 +314,16 @@ A：确认链路 **已发布** 且状态为正常。
 A：检查请求头 `X-LiteFlow-Api-Key` 或与配置一致的 Token 权限 `liteflow:open:execute`。
 
 **Q：决策路由无命中？**  
-A：确认已执行 `liteflow_phase3_route.sql`，并对相关链路 **热刷新** 或重启后端。
+A：确认库中存在 `newCustomerPromo` / `returningCustomerPromo`（namespace=`routeDemo`）且已发布，并对链路 **热刷新** 或重启后端。
+
+**Q：Agent 试跑失败 / 余额不足？**  
+A：检查「模型配置」或 `DEEPSEEK_API_KEY`、DeepSeek 账户余额，以及库中是否有 `agentRiskDemo`。详见 [docs/AGENT.md](docs/AGENT.md)。
+
+---
+
+## 贡献
+
+欢迎 Issue / PR。本地改动请保持与现有模块风格一致；涉及安全（开放 API、Agent Key、只读模式）请补充说明。
 
 ---
 
@@ -284,7 +331,9 @@ A：确认已执行 `liteflow_phase3_route.sql`，并对相关链路 **热刷新
 
 - [RuoYi-Vue](http://ruoyi.vip/) — 后台权限与基础框架
 - [LiteFlow](https://gitee.com/dromara/liteFlow) — 轻量级规则引擎（Apache 2.0）
+- [LiteFlow AI Agent](https://liteflow.cc/) — Re-Act Agent 扩展
 - [AntV X6](https://x6.antv.antgroup.com/) — 图编辑引擎
+- [DeepSeek](https://www.deepseek.com/) — 本仓库 Demo 默认模型供应商
 
 ---
 
@@ -298,5 +347,5 @@ A：确认已执行 `liteflow_phase3_route.sql`，并对相关链路 **热刷新
 
 ## License
 
-本项目基于若依框架，遵循 **MIT License**（见仓库 LICENSE 文件）。  
+本项目基于若依框架，遵循 **MIT License**（见 [LICENSE](LICENSE)）。  
 LiteFlow 遵循 **Apache License 2.0**，使用时请保留相应版权声明。

@@ -35,6 +35,9 @@ public class LfScript extends BaseEntity
 
     private Integer enable;
 
+    /** 当前版本号，更新脚本时递增并写入 lf_script_version */
+    private Integer version;
+
     public Long getId()
     {
         return id;
@@ -121,6 +124,16 @@ public class LfScript extends BaseEntity
         this.enable = enable;
     }
 
+    public Integer getVersion()
+    {
+        return version;
+    }
+
+    public void setVersion(Integer version)
+    {
+        this.version = version;
+    }
+
     @Override
     public String toString()
     {
@@ -132,6 +145,7 @@ public class LfScript extends BaseEntity
             .append("scriptType", getScriptType())
             .append("scriptLanguage", getScriptLanguage())
             .append("enable", getEnable())
+            .append("version", getVersion())
             .append("createBy", getCreateBy())
             .append("createTime", getCreateTime())
             .append("updateBy", getUpdateBy())

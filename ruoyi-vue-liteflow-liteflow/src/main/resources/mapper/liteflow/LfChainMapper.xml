@@ -18,6 +18,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="contextClass"    column="context_class"    />
         <result property="routeEl"         column="route_el"         />
         <result property="namespace"       column="namespace"        />
+        <result property="webhookUrl"      column="webhook_url"      />
         <result property="createBy"        column="create_by"        />
         <result property="createTime"      column="create_time"      />
         <result property="updateBy"        column="update_by"        />
@@ -27,7 +28,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 
     <sql id="selectLfChainVo">
         select id, application_name, chain_name, chain_desc, el_data, graph_json, enable, status,
-               draft_flag, version, context_class, route_el, namespace,
+               draft_flag, version, context_class, route_el, namespace, webhook_url,
                create_by, create_time, update_by, update_time, remark
         from lf_chain
     </sql>
@@ -64,10 +65,10 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     <insert id="insertLfChain" parameterType="com.ruoyiliteflow.liteflow.domain.LfChain" useGeneratedKeys="true" keyProperty="id">
         insert into lf_chain (
             application_name, chain_name, chain_desc, el_data, graph_json, enable, status,
-            draft_flag, version, context_class, route_el, namespace, create_by, create_time, remark
+            draft_flag, version, context_class, route_el, namespace, webhook_url, create_by, create_time, remark
         ) values (
             #{applicationName}, #{chainName}, #{chainDesc}, #{elData}, #{graphJson}, #{enable}, #{status},
-            #{draftFlag}, #{version}, #{contextClass}, #{routeEl}, #{namespace}, #{createBy}, sysdate(), #{remark}
+            #{draftFlag}, #{version}, #{contextClass}, #{routeEl}, #{namespace}, #{webhookUrl}, #{createBy}, sysdate(), #{remark}
         )
     </insert>
 
@@ -86,6 +87,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="contextClass != null">context_class = #{contextClass},</if>
             <if test="routeEl != null">route_el = #{routeEl},</if>
             <if test="namespace != null">namespace = #{namespace},</if>
+            <if test="webhookUrl != null">webhook_url = #{webhookUrl},</if>
             <if test="updateBy != null and updateBy != ''">update_by = #{updateBy},</if>
             <if test="remark != null">remark = #{remark},</if>
             update_time = sysdate()

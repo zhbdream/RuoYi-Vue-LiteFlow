@@ -18,5 +18,15 @@ target/
 .DS_Store
 Thumbs.db
 
+# Agent workspace / secrets
+data/liteflow-agent-workspaces/
+.env
+.env.*
+
 # Node（前端子项目另有 .gitignore，此处兜底）
 node_modules/
+
+# LiteFlow Agent workspace / secrets
+data/liteflow-agent-workspaces/
+.env
+.env.*

@@ -1,5 +1,12 @@
 import request from '@/utils/request'
 
+export function getLiteFlowConfig() {
+  return request({
+    url: '/liteflow/config',
+    method: 'get'
+  })
+}
+
 export function listScript(query) {
   return request({
     url: '/liteflow/script/list',
@@ -50,6 +57,28 @@ export function getScriptRefs(scriptId) {
   return request({
     url: '/liteflow/script/refs/' + scriptId,
     method: 'get'
+  })
+}
+
+export function listScriptVersions(scriptPk) {
+  return request({
+    url: '/liteflow/script/versions/' + scriptPk,
+    method: 'get'
+  })
+}
+
+export function getScriptVersion(id) {
+  return request({
+    url: '/liteflow/script/version/' + id,
+    method: 'get'
+  })
+}
+
+export function generateComponentScaffold(data) {
+  return request({
+    url: '/liteflow/component/scaffold',
+    method: 'post',
+    data: data
   })
 }
 

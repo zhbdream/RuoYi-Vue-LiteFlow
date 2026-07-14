@@ -18,6 +18,7 @@ import com.ruoyiliteflow.common.core.domain.AjaxResult;
 import com.ruoyiliteflow.common.core.page.TableDataInfo;
 import com.ruoyiliteflow.common.enums.BusinessType;
 import com.ruoyiliteflow.liteflow.domain.LfScript;
+import com.ruoyiliteflow.liteflow.domain.LfScriptVersion;
 import com.ruoyiliteflow.liteflow.service.ILfScriptService;
 
 @RestController
@@ -82,5 +83,20 @@ public class LfScriptController extends BaseController
     {
         lfScriptService.validateScript(lfScript);
         return success("脚本校验通过");
+    }
+
+    @PreAuthorize("@ss.hasPermi('liteflow:script:query')")
+    @GetMapping("/versions/{scriptPk}")
+    public AjaxResult versions(@PathVariable Long scriptPk)
+    {
+        List<LfScriptVersion> list = lfScriptService.selectScriptVersions(scriptPk);
+        return success(list);
+    }
+
+    @PreAuthorize("@ss.hasPermi('liteflow:script:query')")
+    @GetMapping("/version/{id}")
+    public AjaxResult versionInfo(@PathVariable Long id)
+    {
+        return success(lfScriptService.selectScriptVersionById(id));
     }
 }

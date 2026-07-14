@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyiliteflow.liteflow.mapper.LfScriptVersionMapper">
+
+    <resultMap type="com.ruoyiliteflow.liteflow.domain.LfScriptVersion" id="LfScriptVersionResult">
+        <id     property="id"             column="id" />
+        <result property="scriptPk"       column="script_pk" />
+        <result property="scriptId"       column="script_id" />
+        <result property="version"        column="version" />
+        <result property="scriptData"     column="script_data" />
+        <result property="scriptType"     column="script_type" />
+        <result property="scriptLanguage" column="script_language" />
+        <result property="publishBy"      column="publish_by" />
+        <result property="createTime"     column="create_time" />
+        <result property="remark"         column="remark" />
+    </resultMap>
+
+    <select id="selectByScriptPk" resultMap="LfScriptVersionResult">
+        select id, script_pk, script_id, version, script_data, script_type, script_language,
+               publish_by, create_time, remark
+        from lf_script_version
+        where script_pk = #{scriptPk}
+        order by version desc
+    </select>
+
+    <select id="selectById" resultMap="LfScriptVersionResult">
+        select id, script_pk, script_id, version, script_data, script_type, script_language,
+               publish_by, create_time, remark
+        from lf_script_version
+        where id = #{id}
+    </select>
+
+    <select id="selectMaxVersion" resultType="int">
+        select ifnull(max(version), 0) from lf_script_version where script_pk = #{scriptPk}
+    </select>
+
+    <insert id="insert" parameterType="com.ruoyiliteflow.liteflow.domain.LfScriptVersion" useGeneratedKeys="true" keyProperty="id">
+        insert into lf_script_version (
+            script_pk, script_id, version, script_data, script_type, script_language,
+            publish_by, create_time, remark
+        ) values (
+            #{scriptPk}, #{scriptId}, #{version}, #{scriptData}, #{scriptType}, #{scriptLanguage},
+            #{publishBy}, sysdate(), #{remark}
+        )
+    </insert>
+
+</mapper>

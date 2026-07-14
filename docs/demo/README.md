@@ -50,7 +50,11 @@ Authorization: Bearer <token>
 | resilientNotify | Phase 2 | resilientNotify-request.json | CATCH/RETRY |
 | batchProcess | Phase 2 | batchProcess-request.json | FOR 次数循环 |
 | routeDemo | Phase 3 | routeDemo-request.json | 决策路由（`POST /liteflow/execute/route`） |
+| fallbackDemo | Phase 3 | fallbackDemo-request.json | 声明式组件 + `@FallbackCmp`（`node("ghostNode")` 降级） |
+| agentRiskDemo | Phase 4 | agentRiskDemo-request.json | DeepSeek Re-Act 风控 Agent（需 `DEEPSEEK_API_KEY`） |
 
 **决策路由说明：** 非单 chain 执行。在链路管理中配置 `route_el` + `namespace`，通过 `executeRouteChain` 按入参命中规则。Demo5 包含 `newCustomerPromo`、`returningCustomerPromo` 两条链（namespace=`routeDemo`）。样例见 `routeDemo-request.json`。
+
+**降级 Demo 说明：** 需 `liteflow.fallback-cmp-enable=true`。EL 为 `THEN(declareHello, node("ghostNode"), declareBye)`，`ghostNode` 不存在时走 `fallbackCommon`。
 
 详细说明见项目 [README Demo 矩阵](../README.md#demo-矩阵)。

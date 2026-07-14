@@ -141,10 +141,50 @@ springdoc:
 # LiteFlow 配置
 liteflow:
   print-execution-log: true
+  # 缺失组件降级（配合 @FallbackCmp + EL 中 node("xxx")）
+  fallback-cmp-enable: true
+  # 生产只读：true 时禁止链路/脚本/版本回滚等写操作，执行与试跑仍可用
+  readonly:
+    enabled: false
+    message: 当前环境为只读模式，禁止修改规则/脚本
+  # 执行完成 HTTP 回调（链路 webhookUrl 优先于全局 url）
+  webhook:
+    enabled: false
+    url: ""
+    only-on-failure: false
+    connect-timeout-ms: 3000
+    read-timeout-ms: 5000
   open-api:
     enabled: true
     api-key: ruoyi-liteflow-open-key-change-me
     header-name: X-LiteFlow-Api-Key
+    # 含 Re-Act Agent 的链路默认禁止走开放 API（避免外部误调用产生 Token 费用）
+    allow-agent-chains: false
+  # Re-Act Agent（DeepSeek / OpenAI 兼容）。优先用「模型配置」页加密 Key；yml 作回退。
+  agent:
+    workspace:
+      root: ./data/liteflow-agent-workspaces
+    shell:
+      mode: DISABLED
+    defaults:
+      max-iterations: 8
+    logging:
+      react-enabled: true
+    # API Key AES 盐（入库加密用，生产请改掉）
+    crypto:
+      secret: ${LITEFLOW_AGENT_AES_SECRET:ruoyi-liteflow-aes}
+    # 日配额（Redis）；0 表示关闭对应限制请把 enabled=false
+    quota:
+      enabled: true
+      daily-call-limit: 100
+      daily-token-limit: 200000
+      daily-chain-call-limit: 200
+    openai-compatible:
+      deepseek:
+        api-key: ${DEEPSEEK_API_KEY:}
+        base-url: ${DEEPSEEK_BASE_URL:https://api.deepseek.com/v1}
+    demo:
+      model: ${DEEPSEEK_MODEL:deepseek-chat}
   rule-source-ext-data-map:
     applicationName: ruoyi-liteflow
     chainTableName: lf_chain

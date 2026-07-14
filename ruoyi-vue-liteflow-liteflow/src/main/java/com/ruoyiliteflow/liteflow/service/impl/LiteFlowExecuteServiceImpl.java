@@ -2,8 +2,12 @@ package com.ruoyiliteflow.liteflow.service.impl;
 
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.function.Consumer;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Service;
@@ -14,19 +18,24 @@ import com.ruoyiliteflow.liteflow.domain.LfChain;
 import com.ruoyiliteflow.liteflow.domain.vo.LiteFlowComponentVo;
 import com.ruoyiliteflow.liteflow.domain.vo.LiteFlowExecuteResultVo;
 import com.ruoyiliteflow.liteflow.domain.vo.LiteFlowRouteResultVo;
+import com.ruoyiliteflow.liteflow.domain.vo.LiteFlowStreamEventVo;
 import com.ruoyiliteflow.liteflow.mapper.LfChainMapper;
 import com.ruoyiliteflow.liteflow.service.ILfChainService;
 import com.ruoyiliteflow.liteflow.service.ILfChainPermissionService;
 import com.ruoyiliteflow.liteflow.service.ILfExecLogService;
 import com.ruoyiliteflow.liteflow.service.ILiteFlowExecuteService;
+import com.ruoyiliteflow.liteflow.service.ILiteFlowWebhookService;
 import com.ruoyiliteflow.liteflow.service.impl.LfScriptServiceImpl;
+import com.ruoyiliteflow.liteflow.support.AgentStreamMode;
 import com.yomahub.liteflow.annotation.LiteflowComponent;
+import com.yomahub.liteflow.core.ExecuteOption;
 import com.yomahub.liteflow.core.NodeBooleanComponent;
 import com.yomahub.liteflow.core.NodeComponent;
 import com.yomahub.liteflow.core.NodeForComponent;
 import com.yomahub.liteflow.core.NodeIteratorComponent;
 import com.yomahub.liteflow.core.NodeSwitchComponent;
 import com.yomahub.liteflow.core.FlowExecutor;
+import com.yomahub.liteflow.flow.FlowEvent;
 import com.yomahub.liteflow.flow.LiteflowResponse;
 
 @Service
@@ -48,6 +57,9 @@ public class LiteFlowExecuteServiceImpl implements ILiteFlowExecuteService
     private ILfChainPermissionService lfChainPermissionService;
 
     @Autowired
+    private ILiteFlowWebhookService liteFlowWebhookService;
+
+    @Autowired
     private ApplicationContext applicationContext;
 
     @Override
@@ -67,16 +79,50 @@ public class LiteFlowExecuteServiceImpl implements ILiteFlowExecuteService
     {
         long start = System.currentTimeMillis();
         lfChainPermissionService.assertCanExecute(chainName, bypassChainPermission);
-        LiteFlowExecuteResultVo result = doExecute(chainName, param);
+        LiteFlowExecuteResultVo result = doExecute(chainName, param, null);
+        long duration = System.currentTimeMillis() - start;
+        afterExecute(chainName, param, result, duration, createBy);
+        return result;
+    }
+
+    @Override
+    public LiteFlowExecuteResultVo executeStream(String chainName, Object param, String createBy,
+            Consumer<LiteFlowStreamEventVo> listener)
+    {
+        long start = System.currentTimeMillis();
+        lfChainPermissionService.assertCanExecute(chainName, false);
+        AgentStreamMode.enable();
         try
         {
-            lfExecLogService.saveExecuteLog(chainName, param, result, System.currentTimeMillis() - start, createBy);
+            LiteFlowExecuteResultVo result = doExecute(chainName, param, listener);
+            long duration = System.currentTimeMillis() - start;
+            afterExecute(chainName, param, result, duration, createBy);
+            return result;
+        }
+        finally
+        {
+            AgentStreamMode.clear();
+        }
+    }
+
+    private void afterExecute(String chainName, Object param, LiteFlowExecuteResultVo result, long duration, String createBy)
+    {
+        try
+        {
+            lfExecLogService.saveExecuteLog(chainName, param, result, duration, createBy);
         }
         catch (Exception ignored)
         {
             // 日志写入失败不影响执行结果
         }
-        return result;
+        try
+        {
+            liteFlowWebhookService.notifyAsync(chainName, param, result, duration, createBy);
+        }
+        catch (Exception ignored)
+        {
+            // Webhook 失败不影响执行结果
+        }
     }
 
     @Override
@@ -233,6 +279,11 @@ public class LiteFlowExecuteServiceImpl implements ILiteFlowExecuteService
 
     private LiteFlowExecuteResultVo doExecute(String chainName, Object param)
     {
+        return doExecute(chainName, param, null);
+    }
+
+    private LiteFlowExecuteResultVo doExecute(String chainName, Object param, Consumer<LiteFlowStreamEventVo> listener)
+    {
         LfChain chain = lfChainService.selectLfChainByName(chainName);
         if (chain == null)
         {
@@ -243,8 +294,14 @@ public class LiteFlowExecuteServiceImpl implements ILiteFlowExecuteService
             throw new ServiceException("链路未启用或处于草稿/停用状态: " + chainName);
         }
 
+        ExecuteOption option = buildExecuteOption(chain, listener);
+
         LiteflowResponse response;
-        if (StringUtils.isNotEmpty(chain.getContextClass()))
+        if (option != null)
+        {
+            response = flowExecutor.execute2Resp(chainName, param, option);
+        }
+        else if (StringUtils.isNotEmpty(chain.getContextClass()))
         {
             try
             {
@@ -291,6 +348,73 @@ public class LiteFlowExecuteServiceImpl implements ILiteFlowExecuteService
             }
         }
         return result;
+    }
+
+    private ExecuteOption buildExecuteOption(LfChain chain, Consumer<LiteFlowStreamEventVo> listener)
+    {
+        if (listener == null && StringUtils.isEmpty(chain.getContextClass()))
+        {
+            return null;
+        }
+        ExecuteOption option = ExecuteOption.of();
+        if (StringUtils.isNotEmpty(chain.getContextClass()))
+        {
+            try
+            {
+                Class<?> contextClass = Class.forName(chain.getContextClass());
+                option.contextClass(contextClass);
+            }
+            catch (ClassNotFoundException e)
+            {
+                throw new ServiceException("上下文类不存在: " + chain.getContextClass());
+            }
+        }
+        if (listener != null)
+        {
+            option.eventListener(event -> safePublish(listener, event));
+        }
+        return option;
+    }
+
+    private void safePublish(Consumer<LiteFlowStreamEventVo> listener, FlowEvent event)
+    {
+        if (listener == null || event == null)
+        {
+            return;
+        }
+        try
+        {
+            LiteFlowStreamEventVo vo = new LiteFlowStreamEventVo();
+            vo.setType(event.getType());
+            vo.setChainId(event.getChainId());
+            vo.setNodeId(event.getNodeId());
+            vo.setRequestId(event.getRequestId());
+            vo.setConversationId(event.getConversationId());
+            vo.setText(event.getText());
+            vo.setLast(event.isLast());
+            vo.setTimestamp(event.getTimestamp());
+            if (event.getData() != null)
+            {
+                Object data = event.getData();
+                if (data instanceof Map)
+                {
+                    @SuppressWarnings("unchecked")
+                    Map<String, Object> map = (Map<String, Object>) data;
+                    vo.setData(map);
+                }
+                else
+                {
+                    Map<String, Object> wrap = new HashMap<>(2);
+                    wrap.put("value", data);
+                    vo.setData(wrap);
+                }
+            }
+            listener.accept(vo);
+        }
+        catch (Exception ignored)
+        {
+            // listener 异常不得打断链路
+        }
     }
 
     private String resolveFailedNodeId(String executeStepStr, String message)
@@ -362,6 +486,41 @@ public class LiteFlowExecuteServiceImpl implements ILiteFlowExecuteService
         return LfScriptServiceImpl.findChainsReferencingNode(lfChainMapper, nodeId);
     }
 
+    @Override
+    public boolean chainContainsAgent(String chainName)
+    {
+        if (StringUtils.isEmpty(chainName))
+        {
+            return false;
+        }
+        LfChain chain = lfChainService.selectLfChainByName(chainName);
+        if (chain == null || StringUtils.isEmpty(chain.getElData()))
+        {
+            return false;
+        }
+        String el = chain.getElData();
+        Set<String> agentIds = new HashSet<>();
+        for (LiteFlowComponentVo comp : listComponents())
+        {
+            if ("agent".equals(comp.getNodeType()) && StringUtils.isNotEmpty(comp.getNodeId()))
+            {
+                agentIds.add(comp.getNodeId());
+            }
+        }
+        if (agentIds.isEmpty())
+        {
+            return false;
+        }
+        for (String agentId : agentIds)
+        {
+            if (el.contains(agentId))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private String resolveNodeId(LiteflowComponent annotation)
     {
         if (StringUtils.isNotEmpty(annotation.id()))
@@ -391,6 +550,10 @@ public class LiteFlowExecuteServiceImpl implements ILiteFlowExecuteService
 
     private String resolveNodeType(Object bean)
     {
+        if (isReActAgentComponent(bean))
+        {
+            return "agent";
+        }
         if (bean instanceof NodeBooleanComponent)
         {
             return "boolean";
@@ -411,6 +574,22 @@ public class LiteFlowExecuteServiceImpl implements ILiteFlowExecuteService
         {
             return "common";
         }
-        return "unknown";
+        // 声明式组件（POJO + @LiteflowMethod）
+        return "declarative";
+    }
+
+    /** 通过类名识别，避免 core 模块强依赖 agent 模块 */
+    private boolean isReActAgentComponent(Object bean)
+    {
+        Class<?> c = bean.getClass();
+        while (c != null)
+        {
+            if ("com.yomahub.liteflow.agent.component.ReActAgentComponent".equals(c.getName()))
+            {
+                return true;
+            }
+            c = c.getSuperclass();
+        }
+        return false;
     }
 }

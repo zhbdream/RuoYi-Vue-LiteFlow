@@ -41,5 +41,7 @@ export const NODE_TYPE_LABELS = {
   switch: '选择组件',
   for: '循环组件',
   iterator: '迭代组件',
+  agent: 'Agent 组件',
+  declarative: '声明式组件',
   unknown: '其他'
 }

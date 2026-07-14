@@ -1,5 +1,13 @@
 <template>
   <div class="app-container">
+    <el-alert
+      v-if="liteflowReadonly"
+      :title="liteflowReadonlyMessage || '当前环境为只读模式，禁止修改脚本'"
+      type="info"
+      show-icon
+      :closable="false"
+      class="mb8"
+    />
     <el-form :model="queryParams" ref="queryForm" size="small" :inline="true" v-show="showSearch" label-width="72px">
       <el-form-item label="脚本ID" prop="scriptId">
         <el-input v-model="queryParams.scriptId" placeholder="脚本ID" clearable @keyup.enter.native="handleQuery" />
@@ -20,10 +28,10 @@
 
     <el-row :gutter="10" class="mb8">
       <el-col :span="1.5">
-        <el-button type="primary" plain icon="el-icon-plus" size="mini" @click="handleAdd" v-hasPermi="['liteflow:script:add']">新增</el-button>
+        <el-button type="primary" plain icon="el-icon-plus" size="mini" :disabled="liteflowReadonly" @click="handleAdd" v-hasPermi="['liteflow:script:add']">新增</el-button>
       </el-col>
       <el-col :span="1.5">
-        <el-button type="danger" plain icon="el-icon-delete" size="mini" :disabled="multiple" @click="handleDelete" v-hasPermi="['liteflow:script:remove']">删除</el-button>
+        <el-button type="danger" plain icon="el-icon-delete" size="mini" :disabled="multiple || liteflowReadonly" @click="handleDelete" v-hasPermi="['liteflow:script:remove']">删除</el-button>
       </el-col>
       <right-toolbar :showSearch.sync="showSearch" @queryTable="getList" />
     </el-row>
@@ -35,16 +43,18 @@
       <el-table-column label="名称" prop="scriptName" min-width="120" :show-overflow-tooltip="true" />
       <el-table-column label="类型" prop="scriptType" width="120" align="center" />
       <el-table-column label="语言" prop="scriptLanguage" width="90" align="center" />
+      <el-table-column label="版本" prop="version" width="70" align="center" />
       <el-table-column label="生效" prop="enable" width="70" align="center">
         <template slot-scope="scope">
           <el-tag :type="scope.row.enable === 1 ? 'success' : 'info'" size="mini">{{ scope.row.enable === 1 ? '是' : '否' }}</el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="操作" align="center" width="220" class-name="small-padding fixed-width">
+      <el-table-column label="操作" align="center" width="260" class-name="small-padding fixed-width">
         <template slot-scope="scope">
-          <el-button size="mini" type="text" icon="el-icon-edit" @click="handleUpdate(scope.row)" v-hasPermi="['liteflow:script:edit']">编辑</el-button>
+          <el-button size="mini" type="text" icon="el-icon-edit" :disabled="liteflowReadonly" @click="handleUpdate(scope.row)" v-hasPermi="['liteflow:script:edit']">编辑</el-button>
+          <el-button size="mini" type="text" icon="el-icon-time" @click="showVersions(scope.row)" v-hasPermi="['liteflow:script:query']">版本</el-button>
           <el-button size="mini" type="text" icon="el-icon-view" @click="showRefs(scope.row)" v-hasPermi="['liteflow:script:query']">引用</el-button>
-          <el-button size="mini" type="text" icon="el-icon-delete" @click="handleDelete(scope.row)" v-hasPermi="['liteflow:script:remove']">删除</el-button>
+          <el-button size="mini" type="text" icon="el-icon-delete" :disabled="liteflowReadonly" @click="handleDelete(scope.row)" v-hasPermi="['liteflow:script:remove']">删除</el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -103,11 +113,45 @@
       <p v-if="refChains.length === 0">暂无链路引用此脚本</p>
       <el-tag v-for="name in refChains" :key="name" style="margin:4px">{{ name }}</el-tag>
     </el-dialog>
+
+    <el-dialog :title="'脚本版本 — ' + (versionScriptId || '')" :visible.sync="versionsOpen" width="720px" append-to-body>
+      <el-table :data="versionList" size="small" max-height="360">
+        <el-table-column label="版本" prop="version" width="80" align="center" />
+        <el-table-column label="保存人" prop="publishBy" width="100" />
+        <el-table-column label="时间" prop="createTime" width="160" />
+        <el-table-column label="备注" prop="remark" min-width="140" :show-overflow-tooltip="true" />
+        <el-table-column label="操作" width="80" align="center">
+          <template slot-scope="scope">
+            <el-button type="text" size="mini" @click="showVersionDetail(scope.row)">查看</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+      <el-empty v-if="!versionList.length" description="暂无历史版本（修改脚本内容后才会产生快照）" :image-size="60" />
+    </el-dialog>
+
+    <el-dialog title="版本快照内容" :visible.sync="versionDetailOpen" width="820px" append-to-body>
+      <el-descriptions v-if="versionDetail" :column="2" border size="small">
+        <el-descriptions-item label="版本">v{{ versionDetail.version }}</el-descriptions-item>
+        <el-descriptions-item label="保存人">{{ versionDetail.publishBy }}</el-descriptions-item>
+        <el-descriptions-item label="语言">{{ versionDetail.scriptLanguage }}</el-descriptions-item>
+        <el-descriptions-item label="类型">{{ versionDetail.scriptType }}</el-descriptions-item>
+      </el-descriptions>
+      <el-input
+        v-if="versionDetail"
+        type="textarea"
+        :rows="14"
+        :value="versionDetail.scriptData"
+        readonly
+        class="script-editor"
+        style="margin-top:12px"
+      />
+    </el-dialog>
   </div>
 </template>
 
 <script>
-import { listScript, getScript, addScript, updateScript, delScript, validateScript, getScriptRefs } from '@/api/liteflow/platform'
+import { mapGetters } from 'vuex'
+import { listScript, getScript, addScript, updateScript, delScript, validateScript, getScriptRefs, listScriptVersions, getScriptVersion } from '@/api/liteflow/platform'
 
 export default {
   name: 'LfScript',
@@ -123,6 +167,11 @@ export default {
       open: false,
       refsOpen: false,
       refChains: [],
+      versionsOpen: false,
+      versionList: [],
+      versionScriptId: '',
+      versionDetailOpen: false,
+      versionDetail: null,
       queryParams: {
         pageNum: 1,
         pageSize: 10,
@@ -135,6 +184,9 @@ export default {
         scriptData: [{ required: true, message: '脚本内容不能为空', trigger: 'blur' }]
       }
     }
+  },
+  computed: {
+    ...mapGetters(['liteflowReadonly', 'liteflowReadonlyMessage'])
   },
   created() {
     this.getList()
@@ -222,6 +274,19 @@ export default {
       getScriptRefs(row.scriptId).then(res => {
         this.refChains = res.data || []
         this.refsOpen = true
+      })
+    },
+    showVersions(row) {
+      this.versionScriptId = row.scriptId
+      listScriptVersions(row.id).then(res => {
+        this.versionList = res.data || []
+        this.versionsOpen = true
+      })
+    },
+    showVersionDetail(row) {
+      getScriptVersion(row.id).then(res => {
+        this.versionDetail = res.data
+        this.versionDetailOpen = true
       })
     }
   }

@@ -103,6 +103,7 @@ CREATE TABLE `lf_chain`  (
   `context_class` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '上下文Class',
   `route_el` varchar(512) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '决策路由 EL',
   `namespace` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '决策路由 namespace',
+  `webhook_url` varchar(512) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '执行完成Webhook回调地址',
   `create_by` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT '' COMMENT '创建者',
   `create_time` datetime NULL DEFAULT NULL COMMENT '创建时间',
   `update_by` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT '' COMMENT '更新者',
@@ -110,19 +111,21 @@ CREATE TABLE `lf_chain`  (
   `remark` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '备注',
   PRIMARY KEY (`id`) USING BTREE,
   UNIQUE INDEX `uk_app_chain`(`application_name` ASC, `chain_name` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 9 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = 'LiteFlow链路表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 11 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = 'LiteFlow链路表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of lf_chain
 -- ----------------------------
-INSERT INTO `lf_chain` VALUES (1, 'ruoyi-liteflow', 'helloChain', '入门三节点串行', 'THEN(helloA, helloB, helloC);', '{\"lfFlowModel\":{\"type\":\"then\",\"children\":[{\"type\":\"component\",\"nodeId\":\"helloA\",\"name\":\"helloA\",\"remark\":\"\",\"tag\":\"\",\"dataKey\":\"\",\"dataValue\":\"\",\"bind\":\"\",\"_key\":\"root.c0\"},{\"type\":\"component\",\"nodeId\":\"helloB\",\"name\":\"helloB\",\"remark\":\"\",\"tag\":\"\",\"dataKey\":\"\",\"dataValue\":\"\",\"bind\":\"\",\"_key\":\"root.c1\"},{\"type\":\"component\",\"nodeId\":\"helloC\",\"name\":\"helloC\",\"remark\":\"\",\"tag\":\"\",\"dataKey\":\"\",\"dataValue\":\"\",\"bind\":\"\",\"_key\":\"root.c2\"}],\"_key\":\"root\"},\"cells\":[{\"position\":{\"x\":260,\"y\":40},\"size\":{\"width\":160,\"height\":48},\"attrs\":{\"text\":{\"text\":\"helloA\"},\"body\":{\"stroke\":\"#409EFF\",\"fill\":\"#ecf5ff\",\"rx\":6,\"ry\":6,\"strokeWidth\":1},\"label\":{\"fill\":\"#303133\",\"fontSize\":13,\"fontWeight\":600}},\"visible\":true,\"shape\":\"rect\",\"id\":\"helloA-1\",\"data\":{\"lfType\":\"component\",\"modelKey\":\"root.c0\",\"nodeId\":\"helloA\",\"name\":\"helloA\",\"remark\":\"\"},\"ports\":{\"groups\":{\"top\":{\"position\":\"top\",\"attrs\":{\"circle\":{\"r\":4,\"magnet\":true,\"stroke\":\"#409EFF\",\"fill\":\"#fff\"}}},\"bottom\":{\"position\":\"bottom\",\"attrs\":{\"circle\":{\"r\":4,\"magnet\":true,\"stroke\":\"#409EFF\",\"fill\":\"#fff\"}}}},\"items\":[{\"id\":\"in\",\"group\":\"top\"},{\"id\":\"out\",\"group\":\"bottom\"}]},\"zIndex\":1},{\"position\":{\"x\":260,\"y\":160},\"size\":{\"width\":160,\"height\":48},\"attrs\":{\"text\":{\"text\":\"helloB\"},\"body\":{\"stroke\":\"#409EFF\",\"fill\":\"#ecf5ff\",\"rx\":6,\"ry\":6,\"strokeWidth\":1},\"label\":{\"fill\":\"#303133\",\"fontSize\":13,\"fontWeight\":600}},\"visible\":true,\"shape\":\"rect\",\"id\":\"helloB-2\",\"data\":{\"lfType\":\"component\",\"modelKey\":\"root.c1\",\"nodeId\":\"helloB\",\"name\":\"helloB\",\"remark\":\"\"},\"ports\":{\"groups\":{\"top\":{\"position\":\"top\",\"attrs\":{\"circle\":{\"r\":4,\"magnet\":true,\"stroke\":\"#409EFF\",\"fill\":\"#fff\"}}},\"bottom\":{\"position\":\"bottom\",\"attrs\":{\"circle\":{\"r\":4,\"magnet\":true,\"stroke\":\"#409EFF\",\"fill\":\"#fff\"}}}},\"items\":[{\"id\":\"in\",\"group\":\"top\"},{\"id\":\"out\",\"group\":\"bottom\"}]},\"zIndex\":2},{\"position\":{\"x\":260,\"y\":290},\"size\":{\"width\":160,\"height\":48},\"attrs\":{\"text\":{\"text\":\"helloC\"},\"body\":{\"stroke\":\"#409EFF\",\"fill\":\"#ecf5ff\",\"rx\":6,\"ry\":6,\"strokeWidth\":1},\"label\":{\"fill\":\"#303133\",\"fontSize\":13,\"fontWeight\":600}},\"visible\":true,\"shape\":\"rect\",\"id\":\"helloC-3\",\"data\":{\"lfType\":\"component\",\"modelKey\":\"root.c2\",\"nodeId\":\"helloC\",\"name\":\"helloC\",\"remark\":\"\"},\"ports\":{\"groups\":{\"top\":{\"position\":\"top\",\"attrs\":{\"circle\":{\"r\":4,\"magnet\":true,\"stroke\":\"#409EFF\",\"fill\":\"#fff\"}}},\"bottom\":{\"position\":\"bottom\",\"attrs\":{\"circle\":{\"r\":4,\"magnet\":true,\"stroke\":\"#409EFF\",\"fill\":\"#fff\"}}}},\"items\":[{\"id\":\"in\",\"group\":\"top\"},{\"id\":\"out\",\"group\":\"bottom\"}]},\"zIndex\":3},{\"shape\":\"edge\",\"attrs\":{\"line\":{\"stroke\":\"#909399\",\"targetMarker\":{\"name\":\"block\",\"width\":8,\"height\":8},\"strokeDasharray\":\"5 5\"}},\"id\":\"567eef4f-2908-49c2-a0ad-570ff1090dba\",\"source\":{\"cell\":\"helloA-1\",\"port\":\"out\"},\"target\":{\"cell\":\"helloB-2\",\"port\":\"in\"},\"zIndex\":4},{\"shape\":\"edge\",\"attrs\":{\"line\":{\"stroke\":\"#909399\",\"targetMarker\":{\"name\":\"block\",\"width\":8,\"height\":8},\"strokeDasharray\":\"5 5\"}},\"id\":\"826fbba4-2843-44f8-aa35-305cc7c7336b\",\"source\":{\"cell\":\"helloB-2\",\"port\":\"out\"},\"target\":{\"cell\":\"helloC-3\",\"port\":\"in\"},\"zIndex\":5}]}', 1, '0', '0', 2, NULL, NULL, NULL, 'admin', '2026-07-03 10:52:37', 'admin', '2026-07-03 14:25:47', 'Demo0');
-INSERT INTO `lf_chain` VALUES (2, 'ruoyi-liteflow', 'orderProcess', '订单处理 IF/SWITCH', 'THEN(initOrder, validateOrder, IF(hasStock, calcDiscount, orderFail), SWITCH(payType).to(aliPay, wechatPay, balancePay), completeOrder);', NULL, 1, '0', '0', 1, 'com.ruoyiliteflow.liteflow.domain.context.OrderContext', NULL, NULL, 'admin', '2026-07-03 10:52:37', '', NULL, 'Demo1');
-INSERT INTO `lf_chain` VALUES (3, 'ruoyi-liteflow', 'dynamicPricing', '动态定价 Demo2', 'THEN(loadMemberLevel, calcFullReduction, applyCoupon, scriptPriceAdjust, buildPriceResult);', NULL, 1, '0', '0', 1, 'com.ruoyiliteflow.liteflow.domain.context.PricingContext', NULL, NULL, 'admin', '2026-07-03 13:34:56', '', NULL, 'Demo2');
-INSERT INTO `lf_chain` VALUES (4, 'ruoyi-liteflow', 'parallelAudit', '并行校验 Demo3', 'THEN(prepareAudit, WHEN(checkInventory, checkCredit, checkRisk).maxWaitSeconds(3), mergeAuditResult, IF(auditPassed, auditSuccess, auditReject));', NULL, 1, '0', '0', 1, 'com.ruoyiliteflow.liteflow.domain.context.AuditContext', NULL, NULL, 'admin', '2026-07-03 13:34:56', '', NULL, 'Demo3');
-INSERT INTO `lf_chain` VALUES (5, 'ruoyi-liteflow', 'resilientNotify', '容错通知 Demo4', 'THEN(PRE(initNotify), CATCH(sendNotify.retry(3)).DO(notifyFallback), FINALLY(logNotify));', NULL, 1, '0', '0', 1, 'com.ruoyiliteflow.liteflow.domain.context.NotifyContext', NULL, NULL, 'admin', '2026-07-03 13:34:56', 'admin', '2026-07-03 13:37:07', 'Demo4');
-INSERT INTO `lf_chain` VALUES (6, 'ruoyi-liteflow', 'batchProcess', '批量处理 Demo6', 'THEN(initBatch, FOR(batchCount).DO(processOrderItem), summarizeBatch);', NULL, 1, '0', '0', 1, 'com.ruoyiliteflow.liteflow.domain.context.BatchContext', NULL, NULL, 'admin', '2026-07-03 13:34:56', '', NULL, 'Demo6');
-INSERT INTO `lf_chain` VALUES (7, 'ruoyi-liteflow', 'newCustomerPromo', '新客促销（决策路由）', 'THEN(newCustomerWelcome, newCustomerDiscount);', NULL, 1, '0', '0', 1, 'com.ruoyiliteflow.liteflow.domain.context.RouteUserContext', 'isNewCustomer', 'routeDemo', 'admin', '2026-07-03 16:28:43', '', NULL, 'Demo5 route');
-INSERT INTO `lf_chain` VALUES (8, 'ruoyi-liteflow', 'returningCustomerPromo', '老客复购（决策路由）', 'THEN(returningCustomerWelcome, returningCustomerRepurchase);', NULL, 1, '0', '0', 1, 'com.ruoyiliteflow.liteflow.domain.context.RouteUserContext', 'isReturningCustomer', 'routeDemo', 'admin', '2026-07-03 16:28:43', '', NULL, 'Demo5 route');
+INSERT INTO `lf_chain` VALUES (1, 'ruoyi-liteflow', 'helloChain', '入门三节点串行', 'THEN(helloA, helloB, helloC);', '{\"lfFlowModel\":{\"type\":\"then\",\"children\":[{\"type\":\"component\",\"nodeId\":\"helloA\",\"name\":\"helloA\",\"remark\":\"\",\"tag\":\"\",\"dataKey\":\"\",\"dataValue\":\"\",\"bind\":\"\",\"_key\":\"root.c0\"},{\"type\":\"component\",\"nodeId\":\"helloB\",\"name\":\"helloB\",\"remark\":\"\",\"tag\":\"\",\"dataKey\":\"\",\"dataValue\":\"\",\"bind\":\"\",\"_key\":\"root.c1\"},{\"type\":\"component\",\"nodeId\":\"helloC\",\"name\":\"helloC\",\"remark\":\"\",\"tag\":\"\",\"dataKey\":\"\",\"dataValue\":\"\",\"bind\":\"\",\"_key\":\"root.c2\"}],\"_key\":\"root\"},\"cells\":[{\"position\":{\"x\":260,\"y\":40},\"size\":{\"width\":160,\"height\":48},\"attrs\":{\"text\":{\"text\":\"helloA\"},\"body\":{\"stroke\":\"#409EFF\",\"fill\":\"#ecf5ff\",\"rx\":6,\"ry\":6,\"strokeWidth\":1},\"label\":{\"fill\":\"#303133\",\"fontSize\":13,\"fontWeight\":600}},\"visible\":true,\"shape\":\"rect\",\"id\":\"helloA-1\",\"data\":{\"lfType\":\"component\",\"modelKey\":\"root.c0\",\"nodeId\":\"helloA\",\"name\":\"helloA\",\"remark\":\"\"},\"ports\":{\"groups\":{\"top\":{\"position\":\"top\",\"attrs\":{\"circle\":{\"r\":4,\"magnet\":true,\"stroke\":\"#409EFF\",\"fill\":\"#fff\"}}},\"bottom\":{\"position\":\"bottom\",\"attrs\":{\"circle\":{\"r\":4,\"magnet\":true,\"stroke\":\"#409EFF\",\"fill\":\"#fff\"}}}},\"items\":[{\"id\":\"in\",\"group\":\"top\"},{\"id\":\"out\",\"group\":\"bottom\"}]},\"zIndex\":1},{\"position\":{\"x\":260,\"y\":160},\"size\":{\"width\":160,\"height\":48},\"attrs\":{\"text\":{\"text\":\"helloB\"},\"body\":{\"stroke\":\"#409EFF\",\"fill\":\"#ecf5ff\",\"rx\":6,\"ry\":6,\"strokeWidth\":1},\"label\":{\"fill\":\"#303133\",\"fontSize\":13,\"fontWeight\":600}},\"visible\":true,\"shape\":\"rect\",\"id\":\"helloB-2\",\"data\":{\"lfType\":\"component\",\"modelKey\":\"root.c1\",\"nodeId\":\"helloB\",\"name\":\"helloB\",\"remark\":\"\"},\"ports\":{\"groups\":{\"top\":{\"position\":\"top\",\"attrs\":{\"circle\":{\"r\":4,\"magnet\":true,\"stroke\":\"#409EFF\",\"fill\":\"#fff\"}}},\"bottom\":{\"position\":\"bottom\",\"attrs\":{\"circle\":{\"r\":4,\"magnet\":true,\"stroke\":\"#409EFF\",\"fill\":\"#fff\"}}}},\"items\":[{\"id\":\"in\",\"group\":\"top\"},{\"id\":\"out\",\"group\":\"bottom\"}]},\"zIndex\":2},{\"position\":{\"x\":260,\"y\":290},\"size\":{\"width\":160,\"height\":48},\"attrs\":{\"text\":{\"text\":\"helloC\"},\"body\":{\"stroke\":\"#409EFF\",\"fill\":\"#ecf5ff\",\"rx\":6,\"ry\":6,\"strokeWidth\":1},\"label\":{\"fill\":\"#303133\",\"fontSize\":13,\"fontWeight\":600}},\"visible\":true,\"shape\":\"rect\",\"id\":\"helloC-3\",\"data\":{\"lfType\":\"component\",\"modelKey\":\"root.c2\",\"nodeId\":\"helloC\",\"name\":\"helloC\",\"remark\":\"\"},\"ports\":{\"groups\":{\"top\":{\"position\":\"top\",\"attrs\":{\"circle\":{\"r\":4,\"magnet\":true,\"stroke\":\"#409EFF\",\"fill\":\"#fff\"}}},\"bottom\":{\"position\":\"bottom\",\"attrs\":{\"circle\":{\"r\":4,\"magnet\":true,\"stroke\":\"#409EFF\",\"fill\":\"#fff\"}}}},\"items\":[{\"id\":\"in\",\"group\":\"top\"},{\"id\":\"out\",\"group\":\"bottom\"}]},\"zIndex\":3},{\"shape\":\"edge\",\"attrs\":{\"line\":{\"stroke\":\"#909399\",\"targetMarker\":{\"name\":\"block\",\"width\":8,\"height\":8},\"strokeDasharray\":\"5 5\"}},\"id\":\"567eef4f-2908-49c2-a0ad-570ff1090dba\",\"source\":{\"cell\":\"helloA-1\",\"port\":\"out\"},\"target\":{\"cell\":\"helloB-2\",\"port\":\"in\"},\"zIndex\":4},{\"shape\":\"edge\",\"attrs\":{\"line\":{\"stroke\":\"#909399\",\"targetMarker\":{\"name\":\"block\",\"width\":8,\"height\":8},\"strokeDasharray\":\"5 5\"}},\"id\":\"826fbba4-2843-44f8-aa35-305cc7c7336b\",\"source\":{\"cell\":\"helloB-2\",\"port\":\"out\"},\"target\":{\"cell\":\"helloC-3\",\"port\":\"in\"},\"zIndex\":5}]}', 1, '0', '0', 2, NULL, NULL, NULL, NULL, 'admin', '2026-07-03 10:52:37', 'admin', '2026-07-03 14:25:47', 'Demo0');
+INSERT INTO `lf_chain` VALUES (2, 'ruoyi-liteflow', 'orderProcess', '订单处理 IF/SWITCH', 'THEN(initOrder, validateOrder, IF(hasStock, calcDiscount, orderFail), SWITCH(payType).to(aliPay, wechatPay, balancePay), completeOrder);', NULL, 1, '0', '0', 1, 'com.ruoyiliteflow.liteflow.domain.context.OrderContext', NULL, NULL, NULL, 'admin', '2026-07-03 10:52:37', '', NULL, 'Demo1');
+INSERT INTO `lf_chain` VALUES (3, 'ruoyi-liteflow', 'dynamicPricing', '动态定价 Demo2', 'THEN(loadMemberLevel, calcFullReduction, applyCoupon, scriptPriceAdjust, buildPriceResult);', NULL, 1, '0', '0', 1, 'com.ruoyiliteflow.liteflow.domain.context.PricingContext', NULL, NULL, NULL, 'admin', '2026-07-03 13:34:56', '', NULL, 'Demo2');
+INSERT INTO `lf_chain` VALUES (4, 'ruoyi-liteflow', 'parallelAudit', '并行校验 Demo3', 'THEN(prepareAudit, WHEN(checkInventory, checkCredit, checkRisk).maxWaitSeconds(3), mergeAuditResult, IF(auditPassed, auditSuccess, auditReject));', NULL, 1, '0', '0', 1, 'com.ruoyiliteflow.liteflow.domain.context.AuditContext', NULL, NULL, NULL, 'admin', '2026-07-03 13:34:56', '', NULL, 'Demo3');
+INSERT INTO `lf_chain` VALUES (5, 'ruoyi-liteflow', 'resilientNotify', '容错通知 Demo4', 'THEN(PRE(initNotify), CATCH(sendNotify.retry(3)).DO(notifyFallback), FINALLY(logNotify));', NULL, 1, '0', '0', 1, 'com.ruoyiliteflow.liteflow.domain.context.NotifyContext', NULL, NULL, NULL, 'admin', '2026-07-03 13:34:56', 'admin', '2026-07-03 13:37:07', 'Demo4');
+INSERT INTO `lf_chain` VALUES (6, 'ruoyi-liteflow', 'batchProcess', '批量处理 Demo6', 'THEN(initBatch, FOR(batchCount).DO(processOrderItem), summarizeBatch);', NULL, 1, '0', '0', 1, 'com.ruoyiliteflow.liteflow.domain.context.BatchContext', NULL, NULL, NULL, 'admin', '2026-07-03 13:34:56', '', NULL, 'Demo6');
+INSERT INTO `lf_chain` VALUES (7, 'ruoyi-liteflow', 'newCustomerPromo', '新客促销（决策路由）', 'THEN(newCustomerWelcome, newCustomerDiscount);', NULL, 1, '0', '0', 1, 'com.ruoyiliteflow.liteflow.domain.context.RouteUserContext', 'isNewCustomer', 'routeDemo', NULL, 'admin', '2026-07-03 16:28:43', '', NULL, 'Demo5 route');
+INSERT INTO `lf_chain` VALUES (8, 'ruoyi-liteflow', 'returningCustomerPromo', '老客复购（决策路由）', 'THEN(returningCustomerWelcome, returningCustomerRepurchase);', NULL, 1, '0', '0', 1, 'com.ruoyiliteflow.liteflow.domain.context.RouteUserContext', 'isReturningCustomer', 'routeDemo', NULL, 'admin', '2026-07-03 16:28:43', '', NULL, 'Demo5 route');
+INSERT INTO `lf_chain` VALUES (9, 'ruoyi-liteflow', 'fallbackDemo', '声明式+降级组件 Demo', 'THEN(declareHello, node("ghostNode"), declareBye);', NULL, 1, '0', '0', 1, NULL, NULL, NULL, NULL, 'admin', '2026-07-14 14:00:00', '', NULL, 'Phase3 FallbackCmp');
+INSERT INTO `lf_chain` VALUES (10, 'ruoyi-liteflow', 'agentRiskDemo', 'Demo7 DeepSeek 风控 Agent', 'THEN(agentPrepare, riskAgent, agentNotify);', NULL, 1, '0', '0', 1, 'com.ruoyiliteflow.agent.domain.AgentRiskContext', NULL, NULL, NULL, 'admin', '2026-07-14 15:00:00', '', NULL, 'Phase4 ReAct Agent');
 
 -- ----------------------------
 -- Table structure for lf_chain_audit
@@ -253,6 +256,7 @@ CREATE TABLE `lf_script`  (
   `script_type` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT 'script' COMMENT '脚本类型',
   `script_language` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT 'groovy' COMMENT '脚本语言',
   `enable` tinyint(1) NULL DEFAULT 1 COMMENT '是否生效',
+  `version` int NULL DEFAULT 1 COMMENT '脚本版本号',
   `create_by` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT '' COMMENT '创建者',
   `create_time` datetime NULL DEFAULT NULL COMMENT '创建时间',
   `update_by` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT '' COMMENT '更新者',
@@ -265,7 +269,52 @@ CREATE TABLE `lf_script`  (
 -- ----------------------------
 -- Records of lf_script
 -- ----------------------------
-INSERT INTO `lf_script` VALUES (1, 'ruoyi-liteflow', 'scriptPriceAdjust', '脚本调价', 'import com.ruoyiliteflow.liteflow.domain.context.PricingContext\ndef ctx = pricingContext\nif (ctx.finalPrice == null) {\n    ctx.finalPrice = ctx.originalPrice\n}\nif (\'VIP\'.equals(ctx.memberLevel)) {\n    ctx.finalPrice = ctx.finalPrice.multiply(new java.math.BigDecimal(\'0.95\'))\n}\nctx.addStep(\'scriptPriceAdjust\')', 'script', 'groovy', 1, 'admin', '2026-07-03 13:34:56', '', NULL, 'Demo2 脚本调价');
+INSERT INTO `lf_script` VALUES (1, 'ruoyi-liteflow', 'scriptPriceAdjust', '脚本调价', 'import com.ruoyiliteflow.liteflow.domain.context.PricingContext\ndef ctx = pricingContext\nif (ctx.finalPrice == null) {\n    ctx.finalPrice = ctx.originalPrice\n}\nif (\'VIP\'.equals(ctx.memberLevel)) {\n    ctx.finalPrice = ctx.finalPrice.multiply(new java.math.BigDecimal(\'0.95\'))\n}\nctx.addStep(\'scriptPriceAdjust\')', 'script', 'groovy', 1, 1, 'admin', '2026-07-03 13:34:56', '', NULL, 'Demo2 脚本调价');
+
+-- ----------------------------
+-- Table structure for lf_script_version
+-- ----------------------------
+DROP TABLE IF EXISTS `lf_script_version`;
+CREATE TABLE `lf_script_version`  (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键',
+  `script_pk` bigint NOT NULL COMMENT 'lf_script.id',
+  `script_id` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '脚本组件ID',
+  `version` int NOT NULL COMMENT '版本号',
+  `script_data` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '脚本内容快照',
+  `script_type` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT 'script' COMMENT '脚本类型',
+  `script_language` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT 'groovy' COMMENT '脚本语言',
+  `publish_by` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT '' COMMENT '保存人',
+  `create_time` datetime NULL DEFAULT NULL COMMENT '创建时间',
+  `remark` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '备注',
+  PRIMARY KEY (`id`) USING BTREE,
+  INDEX `idx_script_pk_ver`(`script_pk` ASC, `version` ASC) USING BTREE
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = 'LiteFlow脚本版本快照' ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Table structure for lf_agent_model
+-- ----------------------------
+DROP TABLE IF EXISTS `lf_agent_model`;
+CREATE TABLE `lf_agent_model` (
+  `id`              bigint       NOT NULL AUTO_INCREMENT COMMENT '主键',
+  `model_code`      varchar(64)  NOT NULL COMMENT '模型编码',
+  `model_name`      varchar(128) DEFAULT NULL COMMENT '显示名称',
+  `provider`        varchar(32)  NOT NULL DEFAULT 'deepseek' COMMENT '供应商',
+  `config_key`      varchar(64)  NOT NULL DEFAULT 'deepseek' COMMENT 'openai-compatible configKey',
+  `base_url`        varchar(255) DEFAULT NULL COMMENT 'API Base URL',
+  `model`           varchar(128) NOT NULL DEFAULT 'deepseek-chat' COMMENT '模型名',
+  `api_key_enc`     varchar(512) DEFAULT NULL COMMENT 'AES 加密 API Key',
+  `status`          char(1)      NOT NULL DEFAULT '0' COMMENT '0正常 1停用',
+  `is_default`      char(1)      NOT NULL DEFAULT '0' COMMENT '是否默认',
+  `daily_call_limit` int         DEFAULT NULL COMMENT '单用户日调用上限',
+  `daily_token_limit` int        DEFAULT NULL COMMENT '单用户日 Token 上限',
+  `create_by`       varchar(64)  DEFAULT '',
+  `create_time`     datetime     DEFAULT NULL,
+  `update_by`       varchar(64)  DEFAULT '',
+  `update_time`     datetime     DEFAULT NULL,
+  `remark`          varchar(500) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_model_code` (`model_code`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='LiteFlow Agent 模型配置';
 
 -- ----------------------------
 -- Table structure for qrtz_blob_triggers
@@ -665,6 +714,7 @@ CREATE TABLE `sys_job`  (
 INSERT INTO `sys_job` VALUES (1, '系统默认（无参）', 'DEFAULT', 'ryTask.ryNoParams', '0/10 * * * * ?', '3', '1', '1', 'admin', '2026-07-03 10:00:46', '', NULL, '');
 INSERT INTO `sys_job` VALUES (2, '系统默认（有参）', 'DEFAULT', 'ryTask.ryParams(\'ry\')', '0/15 * * * * ?', '3', '1', '1', 'admin', '2026-07-03 10:00:46', '', NULL, '');
 INSERT INTO `sys_job` VALUES (3, '系统默认（多参）', 'DEFAULT', 'ryTask.ryMultipleParams(\'ry\', true, 2000L, 316.50D, 100)', '0/20 * * * * ?', '3', '1', '1', 'admin', '2026-07-03 10:00:46', '', NULL, '');
+INSERT INTO `sys_job` VALUES (4, 'LiteFlow定时执行helloChain', 'DEFAULT', 'liteFlowTask.executeByName(\'helloChain\')', '0 0/30 * * * ?', '3', '1', '1', 'admin', '2026-07-14 13:00:00', '', NULL, '示例：定时执行链路，默认暂停。可改为 executeByName(\'orderProcess\', \'{"userId":1001}\')');
 
 -- ----------------------------
 -- Table structure for sys_job_log
@@ -835,6 +885,7 @@ INSERT INTO `sys_menu` VALUES (2005, '执行日志', 2000, 5, 'log', 'liteflow/l
 INSERT INTO `sys_menu` VALUES (2006, '规则审计', 2000, 6, 'audit', 'liteflow/audit/index', '', '', 1, 0, 'C', '0', '0', 'liteflow:audit:list', 'documentation', 'admin', '2026-07-03 14:22:34', '', NULL, 'LiteFlow规则变更审计');
 INSERT INTO `sys_menu` VALUES (2007, '版本历史', 2000, 7, 'version', 'liteflow/version/index', '', '', 1, 0, 'C', '0', '0', 'liteflow:chain:query', 'time', 'admin', '2026-07-03 14:27:42', '', NULL, 'LiteFlow发布版本快照');
 INSERT INTO `sys_menu` VALUES (2008, '监控仪表盘', 2000, 8, 'dashboard', 'liteflow/dashboard/index', '', '', 1, 0, 'C', '0', '0', 'liteflow:dashboard:view', 'chart', 'admin', '2026-07-03 16:28:34', '', NULL, 'LiteFlow执行监控');
+INSERT INTO `sys_menu` VALUES (2009, '模型配置', 2000, 9, 'agent', 'liteflow/agent/index', '', '', 1, 0, 'C', '0', '0', 'liteflow:agent:list', 'skill', 'admin', '2026-07-14 16:00:00', '', NULL, 'LiteFlow Agent 模型配置');
 INSERT INTO `sys_menu` VALUES (2100, '链路查询', 2001, 1, '', '', '', '', 1, 0, 'F', '0', '0', 'liteflow:chain:query', '#', 'admin', '2026-07-03 10:52:37', '', NULL, '');
 INSERT INTO `sys_menu` VALUES (2101, '链路新增', 2001, 2, '', '', '', '', 1, 0, 'F', '0', '0', 'liteflow:chain:add', '#', 'admin', '2026-07-03 10:52:37', '', NULL, '');
 INSERT INTO `sys_menu` VALUES (2102, '链路修改', 2001, 3, '', '', '', '', 1, 0, 'F', '0', '0', 'liteflow:chain:edit', '#', 'admin', '2026-07-03 10:52:37', '', NULL, '');
@@ -856,6 +907,11 @@ INSERT INTO `sys_menu` VALUES (2231, '审计删除', 2006, 2, '', '', '', '', 1,
 INSERT INTO `sys_menu` VALUES (2240, '权限查询', 2007, 1, '', '', '', '', 1, 0, 'F', '0', '0', 'liteflow:chain:permission', '#', 'admin', '2026-07-03 15:39:17', '', NULL, '');
 INSERT INTO `sys_menu` VALUES (2241, '权限配置', 2007, 2, '', '', '', '', 1, 0, 'F', '0', '0', 'liteflow:chain:permission', '#', 'admin', '2026-07-03 15:39:17', '', NULL, '');
 INSERT INTO `sys_menu` VALUES (2250, '监控查看', 2008, 1, '', '', '', '', 1, 0, 'F', '0', '0', 'liteflow:dashboard:view', '#', 'admin', '2026-07-03 16:28:34', '', NULL, '');
+INSERT INTO `sys_menu` VALUES (2260, '模型查询', 2009, 1, '', '', '', '', 1, 0, 'F', '0', '0', 'liteflow:agent:query', '#', 'admin', '2026-07-14 16:00:00', '', NULL, '');
+INSERT INTO `sys_menu` VALUES (2261, '模型新增', 2009, 2, '', '', '', '', 1, 0, 'F', '0', '0', 'liteflow:agent:add', '#', 'admin', '2026-07-14 16:00:00', '', NULL, '');
+INSERT INTO `sys_menu` VALUES (2262, '模型修改', 2009, 3, '', '', '', '', 1, 0, 'F', '0', '0', 'liteflow:agent:edit', '#', 'admin', '2026-07-14 16:00:00', '', NULL, '');
+INSERT INTO `sys_menu` VALUES (2263, '模型删除', 2009, 4, '', '', '', '', 1, 0, 'F', '0', '0', 'liteflow:agent:remove', '#', 'admin', '2026-07-14 16:00:00', '', NULL, '');
+INSERT INTO `sys_menu` VALUES (2264, '模型配置权', 2009, 5, '', '', '', '', 1, 0, 'F', '0', '0', 'liteflow:agent:config', '#', 'admin', '2026-07-14 16:00:00', '', NULL, '');
 
 -- ----------------------------
 -- Table structure for sys_notice

@@ -29,6 +29,12 @@
             <artifactId>ruoyi-vue-liteflow-common</artifactId>
         </dependency>
 
+        <!-- LiteFlow 执行服务（定时跑 chain） -->
+        <dependency>
+            <groupId>com.ruoyiliteflow</groupId>
+            <artifactId>ruoyi-vue-liteflow-liteflow</artifactId>
+        </dependency>
+
     </dependencies>
 
 </project>

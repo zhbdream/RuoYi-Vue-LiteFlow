@@ -2,6 +2,7 @@ package com.ruoyiliteflow.liteflow.service;
 
 import java.util.List;
 import com.ruoyiliteflow.liteflow.domain.LfScript;
+import com.ruoyiliteflow.liteflow.domain.LfScriptVersion;
 
 public interface ILfScriptService
 {
@@ -20,4 +21,8 @@ public interface ILfScriptService
     void validateScript(String scriptData, String scriptLanguage, String scriptType);
 
     List<String> findChainsReferencingScript(String scriptId);
+
+    List<LfScriptVersion> selectScriptVersions(Long scriptPk);
+
+    LfScriptVersion selectScriptVersionById(Long id);
 }

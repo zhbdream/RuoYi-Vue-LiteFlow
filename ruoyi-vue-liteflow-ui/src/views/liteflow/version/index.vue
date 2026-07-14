@@ -42,7 +42,7 @@
         <template slot-scope="scope">
           <el-button size="mini" type="text" @click="showDetail(scope.row)" v-hasPermi="['liteflow:chain:query']">详情</el-button>
           <el-button size="mini" type="text" @click="showCompare(scope.row)" v-hasPermi="['liteflow:chain:query']">对比当前</el-button>
-          <el-button size="mini" type="text" @click="handleRollback(scope.row)" v-hasPermi="['liteflow:chain:edit']">回滚</el-button>
+          <el-button size="mini" type="text" :disabled="liteflowReadonly" @click="handleRollback(scope.row)" v-hasPermi="['liteflow:chain:edit']">回滚</el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -107,6 +107,7 @@
 </template>
 
 <script>
+import { mapGetters } from 'vuex'
 import { getChain, listChainVersions, getChainVersion, rollbackChainVersion } from '@/api/liteflow/chain'
 import { diffLines, hasDiff } from '@/utils/textDiff'
 
@@ -132,6 +133,9 @@ export default {
         chainName: undefined
       }
     }
+  },
+  computed: {
+    ...mapGetters(['liteflowReadonly'])
   },
   created() {
     const chainId = this.$route.query.chainId

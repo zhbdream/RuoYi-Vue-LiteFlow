@@ -1,0 +1,7 @@
+{
+  "chainId": "fallbackDemo",
+  "param": {
+    "name": "RuoYi"
+  },
+  "note": "声明式组件 declareHello/declareBye + node(ghostNode) 触发 @FallbackCmp 降级组件 fallbackCommon。需 liteflow.fallback-cmp-enable=true"
+}

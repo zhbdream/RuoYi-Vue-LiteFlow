@@ -1,5 +1,13 @@
 <template>
   <div class="app-container">
+    <el-alert
+      v-if="liteflowReadonly"
+      :title="liteflowReadonlyMessage || '当前环境为只读模式，禁止修改规则'"
+      type="info"
+      show-icon
+      :closable="false"
+      class="mb8"
+    />
     <el-form :model="queryParams" ref="queryForm" size="small" :inline="true" v-show="showSearch" label-width="68px">
       <el-form-item label="链路ID" prop="chainName">
         <el-input v-model="queryParams.chainName" placeholder="请输入链路ID" clearable @keyup.enter.native="handleQuery" />
@@ -18,19 +26,19 @@
 
     <el-row :gutter="10" class="mb8">
       <el-col :span="1.5">
-        <el-button type="primary" plain icon="el-icon-plus" size="mini" @click="handleAdd" v-hasPermi="['liteflow:chain:add']">新增</el-button>
+        <el-button type="primary" plain icon="el-icon-plus" size="mini" :disabled="liteflowReadonly" @click="handleAdd" v-hasPermi="['liteflow:chain:add']">新增</el-button>
       </el-col>
       <el-col :span="1.5">
-        <el-button type="info" plain icon="el-icon-document-copy" size="mini" @click="openTemplateDialog" v-hasPermi="['liteflow:chain:add']">从模板创建</el-button>
+        <el-button type="info" plain icon="el-icon-document-copy" size="mini" :disabled="liteflowReadonly" @click="openTemplateDialog" v-hasPermi="['liteflow:chain:add']">从模板创建</el-button>
       </el-col>
       <el-col :span="1.5">
-        <el-button type="warning" plain icon="el-icon-upload2" size="mini" @click="openImportDialog" v-hasPermi="['liteflow:chain:add']">导入</el-button>
+        <el-button type="warning" plain icon="el-icon-upload2" size="mini" :disabled="liteflowReadonly" @click="openImportDialog" v-hasPermi="['liteflow:chain:add']">导入</el-button>
       </el-col>
       <el-col :span="1.5">
-        <el-button type="success" plain icon="el-icon-edit" size="mini" :disabled="single" @click="handleUpdate" v-hasPermi="['liteflow:chain:edit']">修改</el-button>
+        <el-button type="success" plain icon="el-icon-edit" size="mini" :disabled="single || liteflowReadonly" @click="handleUpdate" v-hasPermi="['liteflow:chain:edit']">修改</el-button>
       </el-col>
       <el-col :span="1.5">
-        <el-button type="danger" plain icon="el-icon-delete" size="mini" :disabled="multiple" @click="handleDelete" v-hasPermi="['liteflow:chain:remove']">删除</el-button>
+        <el-button type="danger" plain icon="el-icon-delete" size="mini" :disabled="multiple || liteflowReadonly" @click="handleDelete" v-hasPermi="['liteflow:chain:remove']">删除</el-button>
       </el-col>
       <el-col :span="1.5">
         <el-button type="info" plain icon="el-icon-guide" size="mini" @click="openRouteExecute" v-hasPermi="['liteflow:execute']">决策路由试跑</el-button>
@@ -102,6 +110,9 @@
         <el-form-item label="路由 namespace" prop="namespace">
           <el-input v-model="form.namespace" placeholder="可选，如 routeDemo" />
         </el-form-item>
+        <el-form-item label="Webhook" prop="webhookUrl">
+          <el-input v-model="form.webhookUrl" placeholder="可选，执行完成回调 URL（优先于全局配置）" />
+        </el-form-item>
         <el-form-item label="状态" prop="status">
           <el-radio-group v-model="form.status">
             <el-radio label="0">正常</el-radio>
@@ -121,7 +132,7 @@
       </div>
     </el-dialog>
 
-    <el-dialog title="链路试跑" :visible.sync="executeOpen" width="700px" append-to-body>
+    <el-dialog title="链路试跑" :visible.sync="executeOpen" width="760px" append-to-body @close="onExecuteDialogClose">
       <el-form label-width="100px">
         <el-form-item label="链路ID">
           <el-input v-model="executeChainName" disabled />
@@ -129,11 +140,15 @@
         <el-form-item label="请求 JSON">
           <el-input v-model="executeParamJson" type="textarea" :rows="8" />
         </el-form-item>
+        <el-form-item label="流式输出">
+          <el-switch v-model="executeStreamMode" active-text="SSE（Agent 推理过程）" inactive-text="同步" />
+        </el-form-item>
       </el-form>
+      <div v-if="executeStreamLog" class="stream-log">{{ executeStreamLog }}</div>
       <el-alert v-if="executeResult" :title="executeResult.success ? '执行成功' : '执行失败'" :type="executeResult.success ? 'success' : 'error'" show-icon :closable="false" />
       <pre v-if="executeResult" class="execute-result">{{ formatResult(executeResult) }}</pre>
       <div slot="footer" class="dialog-footer">
-        <el-button type="primary" @click="submitExecute">执 行</el-button>
+        <el-button type="primary" :loading="executeLoading" @click="submitExecute">执 行</el-button>
         <el-button @click="executeOpen = false">关 闭</el-button>
       </div>
     </el-dialog>
@@ -235,7 +250,8 @@
 </template>
 
 <script>
-import { listChain, getChain, delChain, addChain, updateChain, reloadChain, executeChain, executeRoute, publishChain, cloneChain, exportChain, importChain, listChainPermission, saveChainPermission } from '@/api/liteflow/chain'
+import { mapGetters } from 'vuex'
+import { listChain, getChain, delChain, addChain, updateChain, reloadChain, executeChain, executeChainStream, executeRoute, publishChain, cloneChain, exportChain, importChain, listChainPermission, saveChainPermission } from '@/api/liteflow/chain'
 import { listRole } from '@/api/system/role'
 import { CHAIN_TEMPLATES, getDefaultExecuteParam } from '@/utils/liteflow/chainTemplates'
 
@@ -256,6 +272,9 @@ export default {
       executeChainName: '',
       executeParamJson: '{}',
       executeResult: null,
+      executeStreamMode: false,
+      executeStreamLog: '',
+      executeLoading: false,
       routeExecuteOpen: false,
       routeExecuteForm: {
         namespace: 'routeDemo',
@@ -305,6 +324,9 @@ export default {
       }
     }
   },
+  computed: {
+    ...mapGetters(['liteflowReadonly', 'liteflowReadonlyMessage'])
+  },
   created() {
     this.getList()
     listRole({ pageNum: 1, pageSize: 200, status: '0' }).then(res => {
@@ -344,6 +366,7 @@ export default {
         contextClass: undefined,
         routeEl: undefined,
         namespace: undefined,
+        webhookUrl: undefined,
         remark: undefined
       }
       this.resetForm('form')
@@ -438,7 +461,61 @@ export default {
       this.executeChainName = row.chainName
       this.executeParamJson = JSON.stringify(getDefaultExecuteParam(row.chainName), null, 2)
       this.executeResult = null
+      this.executeStreamLog = ''
+      this.executeStreamMode = row.chainName === 'agentRiskDemo' || (row.elData || '').toLowerCase().includes('agent')
       this.executeOpen = true
+    },
+    onExecuteDialogClose() {
+      this.executeLoading = false
+    },
+    appendStreamLine(line) {
+      this.executeStreamLog = (this.executeStreamLog || '') + line + '\n'
+    },
+    submitExecute() {
+      let param = {}
+      try {
+        param = JSON.parse(this.executeParamJson || '{}')
+      } catch (e) {
+        this.$modal.msgError('JSON 格式不正确')
+        return
+      }
+      this.executeResult = null
+      this.executeStreamLog = ''
+      this.executeLoading = true
+      if (!this.executeStreamMode) {
+        executeChain(this.executeChainName, param).then(response => {
+          this.executeResult = response.data
+        }).finally(() => {
+          this.executeLoading = false
+        })
+        return
+      }
+      executeChainStream(this.executeChainName, param, {
+        onEvent: ({ type, payload }) => {
+          const text = payload && payload.text ? payload.text : ''
+          const node = payload && payload.nodeId ? '[' + payload.nodeId + '] ' : ''
+          if (type === 'agent.reasoning' && text) {
+            this.appendStreamLine(node + text)
+          } else if (type === 'agent.tool_result') {
+            this.appendStreamLine(node + '[tool] ' + (text || JSON.stringify(payload.data || {})))
+          } else if (type === 'agent.result' && text) {
+            this.appendStreamLine(node + '[result] ' + text)
+          } else if (text) {
+            this.appendStreamLine('[' + type + '] ' + text)
+          }
+        },
+        onDone: (result) => {
+          this.executeResult = result
+          this.executeLoading = false
+        },
+        onError: (err) => {
+          this.executeLoading = false
+          this.appendStreamLine('[error] ' + (err && err.message ? err.message : JSON.stringify(err)))
+          this.$modal.msgError((err && err.message) || '流式执行失败')
+        }
+      }).catch(() => {
+        this.executeLoading = false
+      })
     },
     openTemplateDialog() {
       this.templateForm = {
@@ -486,18 +563,6 @@ export default {
             this.$router.push({ path: '/liteflow/editor', query: { chainId: data.chainName } })
           }
         })
-      })
-    },
-    submitExecute() {
-      let param = {}
-      try {
-        param = JSON.parse(this.executeParamJson || '{}')
-      } catch (e) {
-        this.$modal.msgError('JSON 格式不正确')
-        return
-      }
-      executeChain(this.executeChainName, param).then(response => {
-        this.executeResult = response.data
       })
     },
     openRouteExecute() {
@@ -634,6 +699,20 @@ export default {
   max-height: 260px;
   overflow: auto;
   font-size: 12px;
+}
+.stream-log {
+  margin: 8px 0 12px;
+  max-height: 220px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  background: #0f172a;
+  color: #e2e8f0;
+  padding: 10px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  line-height: 1.5;
+  font-family: Consolas, Monaco, monospace;
 }
 .perm-chain-name {
   margin: 0 0 12px;

@@ -178,10 +178,23 @@
                 <version>${ruoyi-vue-liteflow.version}</version>
             </dependency>
 
+            <!-- LiteFlow Re-Act Agent 扩展 -->
+            <dependency>
+                <groupId>com.ruoyiliteflow</groupId>
+                <artifactId>ruoyi-vue-liteflow-agent</artifactId>
+                <version>${ruoyi-vue-liteflow.version}</version>
+            </dependency>
+
             <!-- LiteFlow 规则引擎 -->
             <dependency>
                 <groupId>com.yomahub</groupId>
                 <artifactId>liteflow-spring-boot4-starter</artifactId>
+                <version>${liteflow.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.yomahub</groupId>
+                <artifactId>liteflow-react-agent-openai</artifactId>
                 <version>${liteflow.version}</version>
             </dependency>
 
@@ -214,6 +227,7 @@
         <module>ruoyi-vue-liteflow-generator</module>
         <module>ruoyi-vue-liteflow-common</module>
         <module>ruoyi-vue-liteflow-liteflow</module>
+        <module>ruoyi-vue-liteflow-agent</module>
     </modules>
     <packaging>pom</packaging>
 

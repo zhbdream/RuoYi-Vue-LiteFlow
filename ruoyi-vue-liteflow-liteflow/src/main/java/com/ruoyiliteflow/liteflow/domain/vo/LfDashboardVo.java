@@ -16,6 +16,8 @@ public class LfDashboardVo
     private List<LfDashboardChainStat> chainStats;
     private List<LfDashboardFailTop> failTop;
     private List<LfDashboardSlowTop> slowTop;
+    /** 慢节点 Top（按 nodeId 聚合） */
+    private List<LfDashboardSlowNodeTop> slowNodeTop;
 
     public long getTotalCalls()
     {
@@ -105,6 +107,16 @@ public class LfDashboardVo
     public void setSlowTop(List<LfDashboardSlowTop> slowTop)
     {
         this.slowTop = slowTop;
+    }
+
+    public List<LfDashboardSlowNodeTop> getSlowNodeTop()
+    {
+        return slowNodeTop;
+    }
+
+    public void setSlowNodeTop(List<LfDashboardSlowNodeTop> slowNodeTop)
+    {
+        this.slowNodeTop = slowNodeTop;
     }
 
     public static class LfDashboardTrendItem
@@ -307,6 +319,65 @@ public class LfDashboardVo
         public void setCreateTime(String createTime)
         {
             this.createTime = createTime;
+        }
+    }
+
+    public static class LfDashboardSlowNodeTop
+    {
+        private String nodeId;
+        private String chainName;
+        private long callCount;
+        private long avgDurationMs;
+        private long maxDurationMs;
+
+        public String getNodeId()
+        {
+            return nodeId;
+        }
+
+        public void setNodeId(String nodeId)
+        {
+            this.nodeId = nodeId;
+        }
+
+        public String getChainName()
+        {
+            return chainName;
+        }
+
+        public void setChainName(String chainName)
+        {
+            this.chainName = chainName;
+        }
+
+        public long getCallCount()
+        {
+            return callCount;
+        }
+
+        public void setCallCount(long callCount)
+        {
+            this.callCount = callCount;
+        }
+
+        public long getAvgDurationMs()
+        {
+            return avgDurationMs;
+        }
+
+        public void setAvgDurationMs(long avgDurationMs)
+        {
+            this.avgDurationMs = avgDurationMs;
+        }
+
+        public long getMaxDurationMs()
+        {
+            return maxDurationMs;
+        }
+
+        public void setMaxDurationMs(long maxDurationMs)
+        {
+            this.maxDurationMs = maxDurationMs;
         }
     }
 }

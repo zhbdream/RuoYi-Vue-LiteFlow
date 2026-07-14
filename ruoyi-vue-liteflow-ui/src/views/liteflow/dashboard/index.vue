@@ -80,6 +80,21 @@
         </div>
       </el-col>
     </el-row>
+
+    <el-row :gutter="16">
+      <el-col :span="24">
+        <div class="table-card">
+          <div class="chart-title">慢节点 Top 10（按 nodeId 平均耗时）</div>
+          <el-table :data="data.slowNodeTop || []" size="small" max-height="320">
+            <el-table-column label="节点 ID" prop="nodeId" min-width="140" :show-overflow-tooltip="true" />
+            <el-table-column label="主要链路" prop="chainName" min-width="140" :show-overflow-tooltip="true" />
+            <el-table-column label="调用次数" prop="callCount" width="100" align="center" />
+            <el-table-column label="平均耗时(ms)" prop="avgDurationMs" width="120" align="center" />
+            <el-table-column label="最大耗时(ms)" prop="maxDurationMs" width="120" align="center" />
+          </el-table>
+        </div>
+      </el-col>
+    </el-row>
   </div>
 </template>
 
