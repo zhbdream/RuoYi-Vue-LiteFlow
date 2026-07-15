@@ -39,32 +39,92 @@
       <right-toolbar :showSearch.sync="showSearch" @queryTable="getList" />
     </el-row>
 
-    <el-table v-loading="loading" :data="list" @selection-change="handleSelectionChange">
-      <el-table-column type="selection" width="55" align="center" />
-      <el-table-column label="编码" prop="modelCode" min-width="130" :show-overflow-tooltip="true" />
-      <el-table-column label="名称" prop="modelName" min-width="120" :show-overflow-tooltip="true" />
-      <el-table-column label="供应商" prop="provider" width="120" align="center" />
-      <el-table-column label="configKey" prop="configKey" width="100" align="center" />
-      <el-table-column label="模型" prop="model" min-width="120" :show-overflow-tooltip="true" />
-      <el-table-column label="API Key" prop="apiKeyMasked" width="130" align="center" />
-      <el-table-column label="默认" prop="isDefault" width="70" align="center">
-        <template slot-scope="scope">
-          <el-tag :type="scope.row.isDefault === '1' ? 'success' : 'info'" size="mini">{{ scope.row.isDefault === '1' ? '是' : '否' }}</el-tag>
-        </template>
-      </el-table-column>
-      <el-table-column label="状态" prop="status" width="70" align="center">
-        <template slot-scope="scope">
-          <el-tag :type="scope.row.status === '0' ? 'success' : 'danger'" size="mini">{{ scope.row.status === '0' ? '正常' : '停用' }}</el-tag>
-        </template>
-      </el-table-column>
-      <el-table-column label="日调用上限" prop="dailyCallLimit" width="100" align="center" />
-      <el-table-column label="操作" align="center" width="160" class-name="small-padding fixed-width">
-        <template slot-scope="scope">
-          <el-button size="mini" type="text" icon="el-icon-edit" @click="handleUpdate(scope.row)" v-hasPermi="['liteflow:agent:edit']">编辑</el-button>
-          <el-button size="mini" type="text" icon="el-icon-delete" @click="handleDelete(scope.row)" v-hasPermi="['liteflow:agent:remove']">删除</el-button>
-        </template>
-      </el-table-column>
-    </el-table>
+    <div v-loading="loading" class="model-card-grid">
+      <div
+        v-for="item in list"
+        :key="item.id"
+        class="model-card"
+        :class="{
+          'is-selected': ids.includes(item.id),
+          'is-default': item.isDefault === '1',
+          'is-disabled': item.status !== '0'
+        }"
+      >
+        <div class="model-card__header">
+          <el-checkbox
+            :value="ids.includes(item.id)"
+            @change="checked => toggleSelect(item, checked)"
+          />
+          <div class="model-card__brand">
+            <div class="model-card__avatar" :class="'provider-' + (item.provider || 'default')">
+              {{ providerInitial(item.provider) }}
+            </div>
+            <div class="model-card__titles">
+              <div class="model-card__name" :title="item.modelName || item.modelCode">
+                {{ item.modelName || item.modelCode || '未命名模型' }}
+              </div>
+              <div class="model-card__code">{{ item.modelCode }}</div>
+            </div>
+          </div>
+          <div class="model-card__tags">
+            <el-tag v-if="item.isDefault === '1'" type="success" size="mini" effect="dark">默认</el-tag>
+            <el-tag :type="item.status === '0' ? 'success' : 'info'" size="mini">
+              {{ item.status === '0' ? '正常' : '停用' }}
+            </el-tag>
+          </div>
+        </div>
+
+        <div class="model-card__body">
+          <div class="model-card__row">
+            <span class="label">供应商</span>
+            <span class="value">{{ item.provider || '-' }}</span>
+          </div>
+          <div class="model-card__row">
+            <span class="label">模型</span>
+            <span class="value mono">{{ item.model || '-' }}</span>
+          </div>
+          <div class="model-card__row">
+            <span class="label">configKey</span>
+            <span class="value mono">{{ item.configKey || '-' }}</span>
+          </div>
+          <div class="model-card__row">
+            <span class="label">API Key</span>
+            <span class="value" :class="{ ok: !!item.apiKeyMasked }">
+              <i :class="item.apiKeyMasked ? 'el-icon-success' : 'el-icon-warning-outline'" />
+              {{ item.apiKeyMasked || '未配置' }}
+            </span>
+          </div>
+          <div class="model-card__row">
+            <span class="label">日调用上限</span>
+            <span class="value">{{ item.dailyCallLimit != null ? item.dailyCallLimit : '不限' }}</span>
+          </div>
+        </div>
+
+        <div class="model-card__footer">
+          <el-button
+            type="text"
+            icon="el-icon-edit"
+            size="mini"
+            @click="handleUpdate(item)"
+            v-hasPermi="['liteflow:agent:edit']"
+          >编辑</el-button>
+          <el-button
+            type="text"
+            icon="el-icon-delete"
+            size="mini"
+            class="danger-text"
+            @click="handleDelete(item)"
+            v-hasPermi="['liteflow:agent:remove']"
+          >删除</el-button>
+        </div>
+      </div>
+
+      <div v-if="!loading && list.length === 0" class="model-card-empty">
+        <i class="el-icon-cpu" />
+        <p>暂无模型配置</p>
+        <el-button type="primary" size="mini" icon="el-icon-plus" @click="handleAdd" v-hasPermi="['liteflow:agent:add']">新增模型</el-button>
+      </div>
+    </div>
 
     <pagination v-show="total > 0" :total="total" :page.sync="queryParams.pageNum" :limit.sync="queryParams.pageSize" @pagination="getList" />
 
@@ -164,7 +224,7 @@ export default {
       title: '',
       queryParams: {
         pageNum: 1,
-        pageSize: 10,
+        pageSize: 12,
         modelCode: undefined,
         provider: undefined,
         status: undefined
@@ -192,6 +252,22 @@ export default {
         this.loading = false
       })
     },
+    providerInitial(provider) {
+      if (!provider) return 'M'
+      if (provider === 'deepseek') return 'DS'
+      if (provider === 'openai-compatible') return 'AI'
+      return provider.slice(0, 2).toUpperCase()
+    },
+    toggleSelect(item, checked) {
+      if (checked) {
+        if (!this.ids.includes(item.id)) {
+          this.ids = this.ids.concat(item.id)
+        }
+      } else {
+        this.ids = this.ids.filter(id => id !== item.id)
+      }
+      this.multiple = !this.ids.length
+    },
     handleQuery() {
       this.queryParams.pageNum = 1
       this.getList()
@@ -199,10 +275,6 @@ export default {
     resetQuery() {
       this.resetForm('queryForm')
       this.handleQuery()
-    },
-    handleSelectionChange(selection) {
-      this.ids = selection.map(item => item.id)
-      this.multiple = !selection.length
     },
     reset() {
       this.form = {
@@ -255,10 +327,12 @@ export default {
       })
     },
     handleDelete(row) {
-      const ids = row.id || this.ids
+      const ids = row && row.id ? row.id : this.ids
       this.$modal.confirm('确认删除选中的模型配置？').then(() => {
         return delAgentModel(ids)
       }).then(() => {
+        this.ids = []
+        this.multiple = true
         this.getList()
         this.$modal.msgSuccess('删除成功')
       }).catch(() => {})
@@ -266,3 +340,190 @@ export default {
   }
 }
 </script>
+
+<style scoped>
+.model-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+  min-height: 160px;
+}
+
+.model-card {
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border: 1px solid #ebeef5;
+  border-radius: 10px;
+  overflow: hidden;
+  transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
+}
+
+.model-card:hover {
+  border-color: #c6e2ff;
+  box-shadow: 0 6px 18px rgba(64, 158, 255, 0.1);
+  transform: translateY(-2px);
+}
+
+.model-card.is-selected {
+  border-color: #409eff;
+  box-shadow: 0 0 0 1px rgba(64, 158, 255, 0.25);
+}
+
+.model-card.is-default {
+  border-color: #67c23a;
+}
+
+.model-card.is-default.is-selected {
+  border-color: #409eff;
+}
+
+.model-card.is-disabled {
+  opacity: 0.72;
+}
+
+.model-card__header {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 14px 14px 10px;
+  border-bottom: 1px solid #f2f3f5;
+  background: linear-gradient(180deg, #f8fbff 0%, #fff 100%);
+}
+
+.model-card__brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
+
+.model-card__avatar {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 0.5px;
+  background: #909399;
+}
+
+.model-card__avatar.provider-deepseek {
+  background: linear-gradient(135deg, #4f6ef7, #2b5cff);
+}
+
+.model-card__avatar.provider-openai-compatible {
+  background: linear-gradient(135deg, #10a37f, #0d8a6a);
+}
+
+.model-card__titles {
+  min-width: 0;
+}
+
+.model-card__name {
+  font-size: 15px;
+  font-weight: 600;
+  color: #303133;
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.model-card__code {
+  margin-top: 2px;
+  font-size: 12px;
+  color: #909399;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.model-card__tags {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.model-card__body {
+  flex: 1;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.model-card__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.model-card__row .label {
+  color: #909399;
+  flex-shrink: 0;
+}
+
+.model-card__row .value {
+  color: #606266;
+  text-align: right;
+  word-break: break-all;
+}
+
+.model-card__row .value.mono {
+  font-family: Consolas, Monaco, 'Courier New', monospace;
+  font-size: 12px;
+}
+
+.model-card__row .value.ok {
+  color: #67c23a;
+}
+
+.model-card__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 4px;
+  padding: 6px 10px;
+  border-top: 1px solid #f2f3f5;
+  background: #fafbfc;
+}
+
+.model-card__footer .danger-text {
+  color: #f56c6c;
+}
+
+.model-card-empty {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 16px;
+  color: #909399;
+  background: #fafbfc;
+  border: 1px dashed #dcdfe6;
+  border-radius: 10px;
+}
+
+.model-card-empty i {
+  font-size: 36px;
+  margin-bottom: 8px;
+  color: #c0c4cc;
+}
+
+.model-card-empty p {
+  margin: 0 0 12px;
+  font-size: 14px;
+}
+</style>
