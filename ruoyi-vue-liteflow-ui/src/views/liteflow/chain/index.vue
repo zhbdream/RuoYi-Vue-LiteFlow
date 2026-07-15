@@ -132,21 +132,112 @@
       </div>
     </el-dialog>
 
-    <el-dialog title="链路试跑" :visible.sync="executeOpen" width="760px" append-to-body @close="onExecuteDialogClose">
+    <el-dialog title="链路试跑" :visible.sync="executeOpen" width="880px" append-to-body custom-class="chain-execute-dialog" @close="onExecuteDialogClose">
       <el-form label-width="100px">
         <el-form-item label="链路ID">
           <el-input v-model="executeChainName" disabled />
         </el-form-item>
         <el-form-item label="请求 JSON">
-          <el-input v-model="executeParamJson" type="textarea" :rows="8" />
+          <el-input v-model="executeParamJson" type="textarea" :rows="6" />
         </el-form-item>
         <el-form-item label="流式输出">
           <el-switch v-model="executeStreamMode" active-text="SSE（Agent 推理过程）" inactive-text="同步" />
         </el-form-item>
       </el-form>
       <div v-if="executeStreamLog" class="stream-log">{{ executeStreamLog }}</div>
-      <el-alert v-if="executeResult" :title="executeResult.success ? '执行成功' : '执行失败'" :type="executeResult.success ? 'success' : 'error'" show-icon :closable="false" />
-      <pre v-if="executeResult" class="execute-result">{{ formatResult(executeResult) }}</pre>
+      <el-alert
+        v-if="executeResult"
+        :title="executeResult.success ? '执行成功' : '执行失败'"
+        :type="executeResult.success ? 'success' : 'error'"
+        show-icon
+        :closable="false"
+      />
+
+      <div v-if="executeInsight" class="exec-insight">
+        <div v-if="executeInsight.steps.length" class="exec-steps">
+          <span
+            v-for="(step, idx) in executeInsight.steps"
+            :key="'step-' + idx"
+            class="exec-step"
+          >
+            <span class="exec-step__label">{{ step }}</span>
+            <i v-if="idx < executeInsight.steps.length - 1" class="el-icon-right exec-step__arrow" />
+          </span>
+        </div>
+
+        <div v-if="executeInsight.question" class="insight-card insight-card--question">
+          <div class="insight-card__title">
+            <i class="el-icon-chat-dot-round" /> 用户问题
+          </div>
+          <div class="insight-card__body">{{ executeInsight.question }}</div>
+        </div>
+
+        <div v-if="executeInsight.riskLevel" class="insight-card insight-card--risk">
+          <div class="insight-card__title">
+            <i class="el-icon-warning-outline" /> 风险结论
+            <el-tag size="mini" :type="riskLevelType(executeInsight.riskLevel)" effect="dark" class="insight-card__tag">
+              {{ executeInsight.riskLevel }}
+            </el-tag>
+          </div>
+          <div v-if="executeInsight.agentReply" class="insight-card__body insight-card__body--pre">{{ executeInsight.agentReply }}</div>
+        </div>
+
+        <div v-if="executeInsight.answer" class="insight-card insight-card--answer">
+          <div class="insight-card__title">
+            <i class="el-icon-s-opportunity" /> 生成回答
+            <el-tag v-if="executeInsight.hitCount != null" size="mini" type="success" class="insight-card__tag">
+              命中 {{ executeInsight.hitCount }} 段
+            </el-tag>
+          </div>
+          <div class="insight-card__body insight-card__body--pre">{{ executeInsight.answer }}</div>
+        </div>
+
+        <div v-if="executeInsight.graphSteps.length" class="insight-card insight-card--graph">
+          <div class="insight-card__title">
+            <i class="el-icon-share" /> LangGraph 轨迹
+          </div>
+          <div class="graph-trace">
+            <div
+              v-for="(g, idx) in executeInsight.graphSteps"
+              :key="'g-' + idx"
+              class="graph-trace__item"
+            >
+              <div class="graph-trace__node">{{ g.node }}</div>
+              <div v-if="g.detail" class="graph-trace__detail">{{ g.detail }}</div>
+            </div>
+          </div>
+        </div>
+
+        <div v-if="executeInsight.ragHits.length" class="insight-card insight-card--rag">
+          <div class="insight-card__title">
+            <i class="el-icon-document" /> 检索片段 retrievedContext
+          </div>
+          <div
+            v-for="(hit, idx) in executeInsight.ragHits"
+            :key="'hit-' + idx"
+            class="rag-hit"
+          >
+            <div class="rag-hit__head">
+              <el-tag size="mini" effect="plain">{{ hit.source }}</el-tag>
+              <span class="rag-hit__score">score {{ hit.score.toFixed(3) }}</span>
+              <el-progress
+                :percentage="Math.round(Math.min(hit.score, 1) * 100)"
+                :stroke-width="8"
+                :show-text="false"
+                class="rag-hit__bar"
+              />
+            </div>
+            <pre class="rag-hit__text">{{ hit.text }}</pre>
+          </div>
+        </div>
+      </div>
+
+      <el-collapse v-if="executeResult" v-model="executeJsonActive" class="exec-json-collapse">
+        <el-collapse-item title="完整 JSON 结果" name="json">
+          <pre class="execute-result">{{ formatResult(executeResult) }}</pre>
+        </el-collapse-item>
+      </el-collapse>
+
       <div slot="footer" class="dialog-footer">
         <el-button type="primary" :loading="executeLoading" @click="submitExecute">执 行</el-button>
         <el-button @click="executeOpen = false">关 闭</el-button>
@@ -275,6 +366,7 @@ export default {
       executeStreamMode: false,
       executeStreamLog: '',
       executeLoading: false,
+      executeJsonActive: [],
       routeExecuteOpen: false,
       routeExecuteForm: {
         namespace: 'routeDemo',
@@ -325,7 +417,10 @@ export default {
     }
   },
   computed: {
-    ...mapGetters(['liteflowReadonly', 'liteflowReadonlyMessage'])
+    ...mapGetters(['liteflowReadonly', 'liteflowReadonlyMessage']),
+    executeInsight() {
+      return this.buildExecuteInsight(this.executeResult)
+    }
   },
   created() {
     this.getList()
@@ -462,8 +557,73 @@ export default {
       this.executeParamJson = JSON.stringify(getDefaultExecuteParam(row.chainName), null, 2)
       this.executeResult = null
       this.executeStreamLog = ''
+      this.executeJsonActive = []
       this.executeStreamMode = row.chainName === 'agentRiskDemo' || (row.elData || '').toLowerCase().includes('agent')
       this.executeOpen = true
+    },
+    buildExecuteInsight(result) {
+      if (!result || !result.success) {
+        return null
+      }
+      const ctx = result.contextData || {}
+      const steps = this.parseExecuteSteps(result.executeStepStrWithTime || result.executeStepStr)
+      const graphSteps = this.parseGraphTrace(ctx.graphTrace)
+      const ragHits = this.parseRetrievedContext(ctx.retrievedContext)
+      const insight = {
+        steps,
+        question: ctx.question || '',
+        answer: ctx.answer || '',
+        riskLevel: ctx.riskLevel || '',
+        agentReply: ctx.agentReply || '',
+        hitCount: ctx.hitCount != null ? ctx.hitCount : null,
+        graphSteps,
+        ragHits
+      }
+      const hasHighlight = !!(insight.question || insight.answer || insight.riskLevel
+        || insight.graphSteps.length || insight.ragHits.length || insight.steps.length)
+      return hasHighlight ? insight : null
+    },
+    parseExecuteSteps(stepStr) {
+      if (!stepStr) {
+        return []
+      }
+      return String(stepStr).split('==>').map(s => s.trim()).filter(Boolean)
+    },
+    parseGraphTrace(trace) {
+      if (!trace) {
+        return []
+      }
+      return String(trace).split('|').map(s => s.trim()).filter(Boolean).map(s => {
+        const i = s.indexOf(':')
+        if (i < 0) {
+          return { node: s, detail: '' }
+        }
+        return { node: s.slice(0, i).trim(), detail: s.slice(i + 1).trim() }
+      })
+    },
+    parseRetrievedContext(text) {
+      if (!text) {
+        return []
+      }
+      const blocks = String(text).split(/\n(?=- source=)/)
+      return blocks.map(block => {
+        const m = block.match(/^- source=([^,\n]+),\s*score=([0-9.]+)\s*\n?([\s\S]*)$/)
+        if (!m) {
+          return null
+        }
+        return {
+          source: m[1].trim(),
+          score: Number(m[2]),
+          text: (m[3] || '').trim()
+        }
+      }).filter(Boolean)
+    },
+    riskLevelType(level) {
+      const u = String(level || '').toUpperCase()
+      if (u === 'HIGH') return 'danger'
+      if (u === 'MEDIUM') return 'warning'
+      if (u === 'LOW') return 'success'
+      return 'info'
     },
     onExecuteDialogClose() {
       this.executeLoading = false
@@ -481,10 +641,13 @@ export default {
       }
       this.executeResult = null
       this.executeStreamLog = ''
+      this.executeJsonActive = []
       this.executeLoading = true
       if (!this.executeStreamMode) {
         executeChain(this.executeChainName, param).then(response => {
           this.executeResult = response.data
+          // AI / RAG / Graph 试跑默认收起 JSON，优先看洞察卡片
+          this.executeJsonActive = []
         }).finally(() => {
           this.executeLoading = false
         })
@@ -506,6 +669,7 @@ export default {
         },
         onDone: (result) => {
           this.executeResult = result
+          this.executeJsonActive = []
           this.executeLoading = false
         },
         onError: (err) => {
@@ -692,27 +856,195 @@ export default {
 
 <style scoped>
 .execute-result {
-  margin-top: 12px;
+  margin: 0;
   background: #f5f7fa;
   padding: 12px;
   border-radius: 4px;
-  max-height: 260px;
+  max-height: 280px;
   overflow: auto;
   font-size: 12px;
+  line-height: 1.5;
 }
 .stream-log {
   margin: 8px 0 12px;
-  max-height: 220px;
+  max-height: 180px;
   overflow: auto;
   white-space: pre-wrap;
   word-break: break-word;
-  background: #0f172a;
+  background: #1e293b;
   color: #e2e8f0;
   padding: 10px 12px;
-  border-radius: 4px;
+  border-radius: 6px;
   font-size: 12px;
   line-height: 1.5;
   font-family: Consolas, Monaco, monospace;
+}
+.exec-insight {
+  margin-top: 14px;
+}
+.exec-steps {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 2px;
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+}
+.exec-step {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+}
+.exec-step__label {
+  display: inline-block;
+  padding: 3px 10px;
+  background: #fff;
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  color: #334155;
+  font-size: 12px;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+.exec-step__arrow {
+  margin: 0 4px;
+  color: #94a3b8;
+  font-size: 12px;
+}
+.insight-card {
+  margin-bottom: 12px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  border-left: 4px solid #64748b;
+}
+.insight-card--question {
+  border-left-color: #0ea5e9;
+  background: #f0f9ff;
+}
+.insight-card--answer {
+  border-left-color: #059669;
+  background: #f0fdf4;
+}
+.insight-card--risk {
+  border-left-color: #d97706;
+  background: #fffbeb;
+}
+.insight-card--graph {
+  border-left-color: #2563eb;
+  background: #eff6ff;
+}
+.insight-card--rag {
+  border-left-color: #0d9488;
+  background: #f0fdfa;
+}
+.insight-card__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #1e293b;
+}
+.insight-card__tag {
+  margin-left: 2px;
+}
+.insight-card__body {
+  font-size: 13px;
+  color: #334155;
+  line-height: 1.65;
+}
+.insight-card__body--pre {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.graph-trace {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.graph-trace__item {
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid #bfdbfe;
+  border-radius: 6px;
+}
+.graph-trace__node {
+  font-size: 12px;
+  font-weight: 700;
+  color: #1d4ed8;
+  letter-spacing: 0.02em;
+}
+.graph-trace__detail {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #475569;
+  line-height: 1.5;
+  word-break: break-word;
+}
+.rag-hit {
+  margin-top: 10px;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid #99f6e4;
+  border-radius: 6px;
+}
+.rag-hit:first-of-type {
+  margin-top: 4px;
+}
+.rag-hit__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.rag-hit__score {
+  flex: 0 0 auto;
+  font-size: 12px;
+  color: #0f766e;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+.rag-hit__bar {
+  flex: 1;
+  max-width: 140px;
+}
+.rag-hit__text {
+  margin: 0;
+  max-height: 140px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 12px;
+  line-height: 1.55;
+  color: #334155;
+  font-family: Consolas, Monaco, "PingFang SC", "Microsoft YaHei", monospace;
+}
+.exec-json-collapse {
+  margin-top: 8px;
+  border: none;
+}
+.exec-json-collapse ::v-deep .el-collapse-item__header {
+  height: 40px;
+  line-height: 40px;
+  font-size: 13px;
+  color: #64748b;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 0 12px;
+}
+.exec-json-collapse ::v-deep .el-collapse-item__wrap {
+  border: none;
+  background: transparent;
+}
+.exec-json-collapse ::v-deep .el-collapse-item__content {
+  padding: 10px 0 0;
 }
 .perm-chain-name {
   margin: 0 0 12px;

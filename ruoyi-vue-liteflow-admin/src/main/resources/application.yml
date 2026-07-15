@@ -185,6 +185,11 @@ liteflow:
         base-url: ${DEEPSEEK_BASE_URL:https://api.deepseek.com/v1}
     demo:
       model: ${DEEPSEEK_MODEL:deepseek-chat}
+  # LangChain4j RAG（本地 All-MiniLM Embedding + 内存向量库）
+  langchain:
+    rag:
+      max-results: 3
+      min-score: 0.45
   rule-source-ext-data-map:
     applicationName: ruoyi-liteflow
     chainTableName: lf_chain

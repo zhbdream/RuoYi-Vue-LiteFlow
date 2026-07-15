@@ -57,6 +57,27 @@ export const CHAIN_TEMPLATES = [
     chainDesc: 'DeepSeek Re-Act Agent Demo7（需 DEEPSEEK_API_KEY）',
     elData: 'THEN(agentPrepare, riskAgent, agentNotify);',
     contextClass: 'com.ruoyiliteflow.agent.domain.AgentRiskContext'
+  },
+  {
+    key: 'lc4jChatDemo',
+    label: 'lc4jChatDemo LangChain4j',
+    chainDesc: 'LangChain4j AiServices + Tool Demo8',
+    elData: 'THEN(lc4jPrepare, lc4jChat, lc4jNotify);',
+    contextClass: 'com.ruoyiliteflow.langchain.domain.Lc4jRiskContext'
+  },
+  {
+    key: 'lc4jGraphDemo',
+    label: 'lc4jGraphDemo LangGraph4j',
+    chainDesc: 'LangGraph4j StateGraph 条件边 Demo9',
+    elData: 'THEN(lc4jPrepare, lc4jGraph, lc4jNotify);',
+    contextClass: 'com.ruoyiliteflow.langchain.domain.Lc4jRiskContext'
+  },
+  {
+    key: 'lc4jRagDemo',
+    label: 'lc4jRagDemo LangChain4j RAG',
+    chainDesc: 'LangChain4j RAG 售后知识问答 Demo10',
+    elData: 'THEN(lc4jRagPrepare, lc4jRag, lc4jRagNotify);',
+    contextClass: 'com.ruoyiliteflow.langchain.domain.Lc4jRagContext'
   }
 ]
 
@@ -100,6 +121,23 @@ export const DEMO_EXECUTE_PARAMS = {
     userType: 'NEW',
     amount: 1299.00,
     scene: 'checkout'
+  },
+  lc4jChatDemo: {
+    orderId: 'ORD-LC4J-1001',
+    userId: 2001,
+    userType: 'NEW',
+    amount: 2599.00,
+    scene: 'checkout'
+  },
+  lc4jGraphDemo: {
+    orderId: 'ORD-GRAPH-1001',
+    userId: 2001,
+    userType: 'NEW',
+    amount: 9999.00,
+    scene: 'checkout'
+  },
+  lc4jRagDemo: {
+    question: '下单后第5天衣服尺码不合适，可以退货或换货吗？运费谁承担？'
   }
 }
 

@@ -550,7 +550,7 @@ public class LiteFlowExecuteServiceImpl implements ILiteFlowExecuteService
 
     private String resolveNodeType(Object bean)
     {
-        if (isReActAgentComponent(bean))
+        if (isReActAgentComponent(bean) || isLc4jAgentLikeComponent(bean))
         {
             return "agent";
         }
@@ -591,5 +591,30 @@ public class LiteFlowExecuteServiceImpl implements ILiteFlowExecuteService
             c = c.getSuperclass();
         }
         return false;
+    }
+
+    /** LangChain4j / LangGraph4j 智能节点（包名识别，避免 liteflow 模块依赖 langchain 模块） */
+    private boolean isLc4jAgentLikeComponent(Object bean)
+    {
+        if (bean == null)
+        {
+            return false;
+        }
+        Package pkg = bean.getClass().getPackage();
+        if (pkg == null || pkg.getName() == null)
+        {
+            return false;
+        }
+        String name = pkg.getName();
+        // 仅标记真正的 AI 推理节点，排除 prepare/notify 辅助节点
+        if (!name.startsWith("com.ruoyiliteflow.langchain.component"))
+        {
+            return false;
+        }
+        if (name.contains(".demo"))
+        {
+            return false;
+        }
+        return bean instanceof NodeComponent;
     }
 }

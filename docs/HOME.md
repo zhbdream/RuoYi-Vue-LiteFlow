@@ -8,6 +8,7 @@
 | [EDITOR.md](EDITOR.md) | 可视化编排器使用指南 |
 | [API.md](API.md) | 开放 API / 内部执行 / Webhook / 定时任务 |
 | [AGENT.md](AGENT.md) | Re-Act Agent（DeepSeek）配置与 Demo7 |
+| [LANGCHAIN.md](LANGCHAIN.md) | LangChain4j / LangGraph4j / RAG（Demo8/9/10） |
 | [demo/README.md](demo/README.md) | Demo 请求样例 |
 
 ## Demo 快速跳转
@@ -23,3 +24,6 @@
 | routeDemo | 决策路由 |
 | fallbackDemo | 声明式 + `@FallbackCmp` 降级 |
 | agentRiskDemo | DeepSeek Re-Act Agent 风控 |
+| lc4jChatDemo | LangChain4j Chat + Tool |
+| lc4jGraphDemo | LangGraph4j 状态图风控 |
+| lc4jRagDemo | LangChain4j RAG 售后问答 |

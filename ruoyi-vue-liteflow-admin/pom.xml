@@ -54,6 +54,12 @@
             <artifactId>ruoyi-vue-liteflow-agent</artifactId>
         </dependency>
 
+        <!-- LangChain4j / LangGraph4j（OpenAI 兼容，可用 DeepSeek） -->
+        <dependency>
+            <groupId>com.ruoyiliteflow</groupId>
+            <artifactId>ruoyi-vue-liteflow-langchain</artifactId>
+        </dependency>
+
         <!-- 定时任务-->
         <dependency>
             <groupId>com.ruoyiliteflow</groupId>

@@ -52,9 +52,14 @@ Authorization: Bearer <token>
 | routeDemo | Phase 3 | routeDemo-request.json | 决策路由（`POST /liteflow/execute/route`） |
 | fallbackDemo | Phase 3 | fallbackDemo-request.json | 声明式组件 + `@FallbackCmp`（`node("ghostNode")` 降级） |
 | agentRiskDemo | Phase 4 | agentRiskDemo-request.json | DeepSeek Re-Act 风控 Agent（需 `DEEPSEEK_API_KEY`） |
+| lc4jChatDemo | Phase 5 | lc4jChatDemo-request.json | LangChain4j AiServices + Tool |
+| lc4jGraphDemo | Phase 5 | lc4jGraphDemo-request.json | LangGraph4j StateGraph 条件边风控 |
+| lc4jRagDemo | Phase 5 | lc4jRagDemo-request.json | LangChain4j RAG 售后知识问答 |
 
 **决策路由说明：** 非单 chain 执行。在链路管理中配置 `route_el` + `namespace`，通过 `executeRouteChain` 按入参命中规则。Demo5 包含 `newCustomerPromo`、`returningCustomerPromo` 两条链（namespace=`routeDemo`）。样例见 `routeDemo-request.json`。
 
 **降级 Demo 说明：** 需 `liteflow.fallback-cmp-enable=true`。EL 为 `THEN(declareHello, node("ghostNode"), declareBye)`，`ghostNode` 不存在时走 `fallbackCommon`。
+
+**LangChain Demo 说明：** 见 [LANGCHAIN.md](../LANGCHAIN.md)。Key 与 Demo7 共用「模型配置」/ `DEEPSEEK_API_KEY`。已有库执行 [sql/phase5_langchain.sql](../sql/phase5_langchain.sql)。
 
 详细说明见项目 [README Demo 矩阵](../README.md#demo-矩阵)。

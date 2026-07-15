@@ -1,0 +1,7 @@
+{
+  "orderId": "ORD-GRAPH-1001",
+  "userId": 2001,
+  "userType": "NEW",
+  "amount": 9999.00,
+  "scene": "checkout"
+}

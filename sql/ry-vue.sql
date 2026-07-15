@@ -111,7 +111,7 @@ CREATE TABLE `lf_chain`  (
   `remark` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '备注',
   PRIMARY KEY (`id`) USING BTREE,
   UNIQUE INDEX `uk_app_chain`(`application_name` ASC, `chain_name` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 11 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = 'LiteFlow链路表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 14 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = 'LiteFlow链路表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of lf_chain
@@ -126,6 +126,9 @@ INSERT INTO `lf_chain` VALUES (7, 'ruoyi-liteflow', 'newCustomerPromo', '新客�
 INSERT INTO `lf_chain` VALUES (8, 'ruoyi-liteflow', 'returningCustomerPromo', '老客复购（决策路由）', 'THEN(returningCustomerWelcome, returningCustomerRepurchase);', NULL, 1, '0', '0', 1, 'com.ruoyiliteflow.liteflow.domain.context.RouteUserContext', 'isReturningCustomer', 'routeDemo', NULL, 'admin', '2026-07-03 16:28:43', '', NULL, 'Demo5 route');
 INSERT INTO `lf_chain` VALUES (9, 'ruoyi-liteflow', 'fallbackDemo', '声明式+降级组件 Demo', 'THEN(declareHello, node("ghostNode"), declareBye);', NULL, 1, '0', '0', 1, NULL, NULL, NULL, NULL, 'admin', '2026-07-14 14:00:00', '', NULL, 'Phase3 FallbackCmp');
 INSERT INTO `lf_chain` VALUES (10, 'ruoyi-liteflow', 'agentRiskDemo', 'Demo7 DeepSeek 风控 Agent', 'THEN(agentPrepare, riskAgent, agentNotify);', NULL, 1, '0', '0', 1, 'com.ruoyiliteflow.agent.domain.AgentRiskContext', NULL, NULL, NULL, 'admin', '2026-07-14 15:00:00', '', NULL, 'Phase4 ReAct Agent');
+INSERT INTO `lf_chain` VALUES (11, 'ruoyi-liteflow', 'lc4jChatDemo', 'Demo8 LangChain4j Chat+Tool 风控', 'THEN(lc4jPrepare, lc4jChat, lc4jNotify);', NULL, 1, '0', '0', 1, 'com.ruoyiliteflow.langchain.domain.Lc4jRiskContext', NULL, NULL, NULL, 'admin', '2026-07-15 20:00:00', '', NULL, 'Phase5 LangChain4j');
+INSERT INTO `lf_chain` VALUES (12, 'ruoyi-liteflow', 'lc4jGraphDemo', 'Demo9 LangGraph4j 状态图风控', 'THEN(lc4jPrepare, lc4jGraph, lc4jNotify);', NULL, 1, '0', '0', 1, 'com.ruoyiliteflow.langchain.domain.Lc4jRiskContext', NULL, NULL, NULL, 'admin', '2026-07-15 20:00:00', '', NULL, 'Phase5 LangGraph4j');
+INSERT INTO `lf_chain` VALUES (13, 'ruoyi-liteflow', 'lc4jRagDemo', 'Demo10 LangChain4j RAG 售后问答', 'THEN(lc4jRagPrepare, lc4jRag, lc4jRagNotify);', NULL, 1, '0', '0', 1, 'com.ruoyiliteflow.langchain.domain.Lc4jRagContext', NULL, NULL, NULL, 'admin', '2026-07-15 21:00:00', '', NULL, 'Phase5 LangChain4j RAG');
 
 -- ----------------------------
 -- Table structure for lf_chain_audit
