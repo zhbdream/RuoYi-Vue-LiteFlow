@@ -92,7 +92,11 @@ Content-Type: application/json
 
 样例：[demo/lc4jGraphDemo-request.json](demo/lc4jGraphDemo-request.json)
 
+试跑洞察示意（风险结论 + LangGraph 轨迹）：
 
+<p align="center">
+  <img src="img/链路试跑LangGraph4j%20状态图风控.png" alt="LangGraph4j 试跑" width="720" />
+</p>
 
 ## Demo10：`lc4jRagDemo`（RAG 售后问答）
 
@@ -126,6 +130,12 @@ Content-Type: application/json
 样例：[demo/lc4jRagDemo-request.json](demo/lc4jRagDemo-request.json)
 
 结果关注字段：`answer`、`retrievedContext`、`hitCount`。
+
+试跑洞察示意：
+
+<p align="center">
+  <img src="img/链路试跑RAGDemo.png" alt="RAG 试跑" width="720" />
+</p>
 
 可选配置：
 

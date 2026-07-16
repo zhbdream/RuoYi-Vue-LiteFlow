@@ -320,6 +320,39 @@ CREATE TABLE `lf_agent_model` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='LiteFlow Agent 模型配置';
 
 -- ----------------------------
+-- Table structure for lf_chat_session / lf_chat_message
+-- ----------------------------
+DROP TABLE IF EXISTS `lf_chat_message`;
+DROP TABLE IF EXISTS `lf_chat_session`;
+CREATE TABLE `lf_chat_session` (
+  `id`          bigint       NOT NULL AUTO_INCREMENT COMMENT '主键',
+  `title`       varchar(128) DEFAULT NULL COMMENT '会话标题',
+  `user_name`   varchar(64)  NOT NULL COMMENT '归属用户',
+  `model_code`  varchar(64)  DEFAULT NULL COMMENT '模型标识',
+  `model_name`  varchar(128) DEFAULT NULL COMMENT '模型名',
+  `status`      char(1)      NOT NULL DEFAULT '0' COMMENT '0正常 1删除',
+  `create_by`   varchar(64)  DEFAULT '',
+  `create_time` datetime     DEFAULT NULL,
+  `update_by`   varchar(64)  DEFAULT '',
+  `update_time` datetime     DEFAULT NULL,
+  `remark`      varchar(500) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_chat_user` (`user_name`, `status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='AI内部助手会话';
+
+CREATE TABLE `lf_chat_message` (
+  `id`          bigint       NOT NULL AUTO_INCREMENT COMMENT '主键',
+  `session_id`  bigint       NOT NULL COMMENT '会话ID',
+  `role`        varchar(16)  NOT NULL COMMENT 'user/assistant/system',
+  `content`     mediumtext   NOT NULL COMMENT '消息内容',
+  `token_count` int          DEFAULT NULL COMMENT 'Token 用量',
+  `create_by`   varchar(64)  DEFAULT '',
+  `create_time` datetime     DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_chat_session` (`session_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='AI内部助手消息';
+
+-- ----------------------------
 -- Table structure for qrtz_blob_triggers
 -- ----------------------------
 DROP TABLE IF EXISTS `qrtz_blob_triggers`;
@@ -889,6 +922,7 @@ INSERT INTO `sys_menu` VALUES (2006, '规则审计', 2000, 6, 'audit', 'liteflow
 INSERT INTO `sys_menu` VALUES (2007, '版本历史', 2000, 7, 'version', 'liteflow/version/index', '', '', 1, 0, 'C', '0', '0', 'liteflow:chain:query', 'time', 'admin', '2026-07-03 14:27:42', '', NULL, 'LiteFlow发布版本快照');
 INSERT INTO `sys_menu` VALUES (2008, '监控仪表盘', 2000, 8, 'dashboard', 'liteflow/dashboard/index', '', '', 1, 0, 'C', '0', '0', 'liteflow:dashboard:view', 'chart', 'admin', '2026-07-03 16:28:34', '', NULL, 'LiteFlow执行监控');
 INSERT INTO `sys_menu` VALUES (2009, '模型配置', 2000, 9, 'agent', 'liteflow/agent/index', '', '', 1, 0, 'C', '0', '0', 'liteflow:agent:list', 'skill', 'admin', '2026-07-14 16:00:00', '', NULL, 'LiteFlow Agent 模型配置');
+INSERT INTO `sys_menu` VALUES (2010, 'AI助手', 2000, 10, 'chat', 'liteflow/chat/index', '', '', 1, 0, 'C', '0', '0', 'liteflow:chat:list', 'message', 'admin', '2026-07-16 10:00:00', '', NULL, '内部 AI 对话助手');
 INSERT INTO `sys_menu` VALUES (2100, '链路查询', 2001, 1, '', '', '', '', 1, 0, 'F', '0', '0', 'liteflow:chain:query', '#', 'admin', '2026-07-03 10:52:37', '', NULL, '');
 INSERT INTO `sys_menu` VALUES (2101, '链路新增', 2001, 2, '', '', '', '', 1, 0, 'F', '0', '0', 'liteflow:chain:add', '#', 'admin', '2026-07-03 10:52:37', '', NULL, '');
 INSERT INTO `sys_menu` VALUES (2102, '链路修改', 2001, 3, '', '', '', '', 1, 0, 'F', '0', '0', 'liteflow:chain:edit', '#', 'admin', '2026-07-03 10:52:37', '', NULL, '');
@@ -915,6 +949,9 @@ INSERT INTO `sys_menu` VALUES (2261, '模型新增', 2009, 2, '', '', '', '', 1,
 INSERT INTO `sys_menu` VALUES (2262, '模型修改', 2009, 3, '', '', '', '', 1, 0, 'F', '0', '0', 'liteflow:agent:edit', '#', 'admin', '2026-07-14 16:00:00', '', NULL, '');
 INSERT INTO `sys_menu` VALUES (2263, '模型删除', 2009, 4, '', '', '', '', 1, 0, 'F', '0', '0', 'liteflow:agent:remove', '#', 'admin', '2026-07-14 16:00:00', '', NULL, '');
 INSERT INTO `sys_menu` VALUES (2264, '模型配置权', 2009, 5, '', '', '', '', 1, 0, 'F', '0', '0', 'liteflow:agent:config', '#', 'admin', '2026-07-14 16:00:00', '', NULL, '');
+INSERT INTO `sys_menu` VALUES (2270, '会话查询', 2010, 1, '', '', '', '', 1, 0, 'F', '0', '0', 'liteflow:chat:query', '#', 'admin', '2026-07-16 10:00:00', '', NULL, '');
+INSERT INTO `sys_menu` VALUES (2271, '会话发送', 2010, 2, '', '', '', '', 1, 0, 'F', '0', '0', 'liteflow:chat:send', '#', 'admin', '2026-07-16 10:00:00', '', NULL, '');
+INSERT INTO `sys_menu` VALUES (2272, '会话删除', 2010, 3, '', '', '', '', 1, 0, 'F', '0', '0', 'liteflow:chat:remove', '#', 'admin', '2026-07-16 10:00:00', '', NULL, '');
 
 -- ----------------------------
 -- Table structure for sys_notice
@@ -1170,6 +1207,10 @@ INSERT INTO `sys_role_menu` VALUES (2, 2005);
 INSERT INTO `sys_role_menu` VALUES (2, 2006);
 INSERT INTO `sys_role_menu` VALUES (2, 2007);
 INSERT INTO `sys_role_menu` VALUES (2, 2008);
+INSERT INTO `sys_role_menu` VALUES (2, 2010);
+INSERT INTO `sys_role_menu` VALUES (2, 2270);
+INSERT INTO `sys_role_menu` VALUES (2, 2271);
+INSERT INTO `sys_role_menu` VALUES (2, 2272);
 INSERT INTO `sys_role_menu` VALUES (2, 2100);
 INSERT INTO `sys_role_menu` VALUES (2, 2101);
 INSERT INTO `sys_role_menu` VALUES (2, 2102);

@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyiliteflow.langchain.mapper.LfChatMessageMapper">
+
+    <resultMap type="com.ruoyiliteflow.langchain.domain.LfChatMessage" id="LfChatMessageResult">
+        <id     property="id"         column="id" />
+        <result property="sessionId"  column="session_id" />
+        <result property="role"       column="role" />
+        <result property="content"    column="content" />
+        <result property="tokenCount" column="token_count" />
+        <result property="createBy"   column="create_by" />
+        <result property="createTime" column="create_time" />
+    </resultMap>
+
+    <sql id="selectVo">
+        select id, session_id, role, content, token_count, create_by, create_time
+        from lf_chat_message
+    </sql>
+
+    <select id="selectBySessionId" parameterType="Long" resultMap="LfChatMessageResult">
+        <include refid="selectVo"/>
+        where session_id = #{sessionId}
+        order by id asc
+    </select>
+
+    <select id="selectRecentBySessionId" resultMap="LfChatMessageResult">
+        select id, session_id, role, content, token_count, create_by, create_time
+        from (
+            select id, session_id, role, content, token_count, create_by, create_time
+            from lf_chat_message
+            where session_id = #{sessionId}
+            order by id desc
+            limit #{limit}
+        ) t
+        order by id asc
+    </select>
+
+    <insert id="insertLfChatMessage" parameterType="com.ruoyiliteflow.langchain.domain.LfChatMessage" useGeneratedKeys="true" keyProperty="id">
+        insert into lf_chat_message (
+            session_id, role, content, token_count, create_by, create_time
+        ) values (
+            #{sessionId}, #{role}, #{content}, #{tokenCount}, #{createBy}, sysdate()
+        )
+    </insert>
+
+    <delete id="deleteBySessionIds" parameterType="Long">
+        delete from lf_chat_message where session_id in
+        <foreach collection="array" item="id" open="(" separator="," close=")">#{id}</foreach>
+    </delete>
+</mapper>

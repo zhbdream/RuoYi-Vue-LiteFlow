@@ -20,7 +20,7 @@
 </p>
 
 <p align="center">
-  拖拽画流程 · EL 双向同步 · 规则热更新 · Re-Act Agent · LangChain4j / LangGraph4j · RAG · 执行监控 · 开放 API
+  拖拽画流程 · EL 双向同步 · 规则热更新 · Re-Act Agent · LangChain4j / LangGraph4j · RAG · 内部 AI 助手 · 执行监控 · 开放 API
 </p>
 
 > Gitee / GitHub 内容同步镜像。提 Issue、PR 任选其一即可。
@@ -37,12 +37,13 @@
 - **LangChain4j**（AiServices、Tool Calling）
 - **LangGraph4j**（StateGraph 条件边）
 - **RAG**（本地 Embedding + 内存向量库 + 售后知识问答 Demo）
+- **内部 AI 助手**（后台多轮对话 + SSE，复用模型配置与配额）
 
 AI 节点与普通 Java / 脚本节点可在同一条 EL 链路中混编，共用模型配置、日配额、执行日志与试跑洞察展示。
 
 适合作为团队内部的 **规则编排中台**，或二次开发动态定价、风控策略、智能客服、知识问答等场景的基础工程。
 
-> **定位说明：** 本项目以 **LiteFlow 逻辑编排** 为骨架；AI 能力通过独立模块接入，可按需启用。
+> **定位说明：** 本项目以 **LiteFlow 逻辑编排** 为骨架；AI 能力通过独立模块接入，可按需启用。内部 AI 助手面向后台运维 / 开发自用，并非对标豆包 / Kimi 的独立聊天产品。
 
 ---
 
@@ -67,6 +68,7 @@ AI 节点与普通 Java / 脚本节点可在同一条 EL 链路中混编，共�
 | **LangChain4j** | AiServices + Tool、OpenAI 兼容 ChatModel（DeepSeek 等） |
 | **LangGraph4j** | StateGraph 多步推理与条件边，封装为单 LiteFlow 节点 |
 | **RAG 问答** | 本地 All-MiniLM Embedding + 内存向量库，内置售后知识库 Demo |
+| **内部 AI 助手** | 后台多轮对话 + SSE，复用模型配置与配额 |
 
 ---
 
@@ -98,6 +100,24 @@ AI 节点与普通 Java / 脚本节点可在同一条 EL 链路中混编，共�
   </tr>
 </table>
 
+### AI 能力界面
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/img/模型配置1.png" alt="模型配置" /></td>
+    <td width="50%"><img src="docs/img/模型配置2.png" alt="新增模型" /></td>
+  </tr>
+  <tr>
+    <td colspan="2"><img src="docs/img/AI助手.png" alt="AI助手" /></td>
+  </tr>
+  <tr>
+    <td><img src="docs/img/链路试跑LangGraph4j%20状态图风控.png" alt="LangGraph4j 试跑" /></td>
+    <td><img src="docs/img/链路试跑RAGDemo.png" alt="RAG 试跑" /></td>
+  </tr>
+</table>
+
+更多截图说明见 [docs/img/README.md](docs/img/README.md)。
+
 ---
 
 ## 架构概览
@@ -108,11 +128,13 @@ flowchart TB
     Editor[可视化编排 X6]
     Chain[链路 / 脚本 / 组件]
     Log[执行日志 / 监控 / 试跑洞察]
+    AiChat[内部 AI 助手]
   end
 
   subgraph Admin["ruoyi-vue-liteflow-admin"]
     API["/liteflow/** REST"]
     OpenAPI["/liteflow/open/**"]
+    ChatAPI["/liteflow/chat/** SSE"]
   end
 
   subgraph Core["ruoyi-vue-liteflow-liteflow"]
@@ -122,12 +144,14 @@ flowchart TB
 
   subgraph Agent["ruoyi-vue-liteflow-agent"]
     ReAct[Re-Act Agent / Tools]
+    ModelCfg[模型配置 / 配额]
   end
 
   subgraph Lc["ruoyi-vue-liteflow-langchain"]
     Chat[LangChain4j Chat + Tool]
     Graph[LangGraph4j StateGraph]
     Rag[RAG Embedding + 向量检索]
+    Assist[内部助手流式对话]
   end
 
   subgraph Store["MySQL / Redis"]
@@ -135,12 +159,15 @@ flowchart TB
     ScriptTbl[(lf_script)]
     LogTbl[(lf_exec_log)]
     ModelTbl[(lf_agent_model)]
+    ChatTbl[(lf_chat_session / message)]
   end
 
   UI --> API
   UI --> OpenAPI
+  AiChat --> ChatAPI
   API --> Svc
   OpenAPI --> Svc
+  ChatAPI --> Assist
   Svc --> LF
   LF --> ReAct
   LF --> Chat
@@ -149,16 +176,20 @@ flowchart TB
   LF --> ChainTbl
   LF --> ScriptTbl
   Svc --> LogTbl
-  ReAct --> ModelTbl
-  Chat --> ModelTbl
-  Graph --> ModelTbl
-  Rag --> ModelTbl
+  ReAct --> ModelCfg
+  Chat --> ModelCfg
+  Graph --> ModelCfg
+  Rag --> ModelCfg
+  Assist --> ModelCfg
+  ModelCfg --> ModelTbl
+  Assist --> ChatTbl
 ```
 
 **分层约定：**
 
 - LiteFlow EL：外层业务编排（校验、分支、落库、通知）
 - AI 节点：内层智能能力（Re-Act / Chat+Tool / 状态图 / RAG）
+- 内部 AI 助手：独立会话 API，不走链路 EL，共用模型配置与配额
 - `lf_chain.el_data` 为执行权威；`graph_json` 为画布快照；发布后热刷新
 
 ---
@@ -171,7 +202,7 @@ flowchart TB
 | 规则热更新 | ✅ SQL 源 + 发布/热刷新 | ✅ 支持 | 流程部署模型不同 |
 | 权限 / 审计 | ✅ 若依 RBAC + 链路权限 | ❌ 需自建 | ✅ 工作流权限体系 |
 | 执行日志 / 监控 | ✅ 内置 | ❌ 需自建 | ✅ 流程历史 |
-| AI 混编 | ✅ Re-Act / LC4j / LG4j / RAG | ❌ 需自建 | 需自行扩展 |
+| AI 混编 | ✅ Re-Act / LC4j / LG4j / RAG / 内部助手 | ❌ 需自建 | 需自行扩展 |
 | 适用场景 | 业务逻辑编排、策略链、智能节点 | 嵌入式规则 | 人工审批、长流程 |
 | 学习成本 | 低（Demo 矩阵 + 文档） | 中 | 高 |
 
@@ -204,7 +235,7 @@ flowchart TB
 mysql -u root -p ry-vue < sql/ry-vue.sql
 ```
 
-全量脚本已包含若依基础表、LiteFlow 表、Demo 链路（含 Agent / LangChain / RAG / 决策路由）与菜单。修改 `ruoyi-vue-liteflow-admin/src/main/resources/application-druid.yml` 中的数据库与 Redis 连接。
+全量脚本已包含若依基础表、LiteFlow 表、Demo 链路（含 Agent / LangChain / RAG / 决策路由）、**内部 AI 助手表**与菜单。修改 `ruoyi-vue-liteflow-admin/src/main/resources/application-druid.yml` 中的数据库与 Redis 连接。
 
 > **安全提示：** 生产环境请修改 `application.yml` 中 `liteflow.open-api.api-key` 默认值；模型 API Key 勿写入仓库，请用「模型配置」页或环境变量。
 
@@ -214,6 +245,7 @@ mysql -u root -p ry-vue < sql/ry-vue.sql
 |------|------|
 | [sql/phase5_langchain.sql](sql/phase5_langchain.sql) | `lc4jChatDemo` / `lc4jGraphDemo` |
 | [sql/phase5_rag.sql](sql/phase5_rag.sql) | `lc4jRagDemo` |
+| [sql/phase6_chat.sql](sql/phase6_chat.sql) | 内部 AI 助手表 + 菜单 |
 
 ### 3. 启动后端
 
@@ -240,8 +272,9 @@ npm run dev
 
 1. 登录 → **LiteFlow编排 → 链路管理**
 2. 对 `helloChain` 点击 **试跑**
-3. 配置模型 Key 后，可依次试跑 `agentRiskDemo` / `lc4jChatDemo` / `lc4jGraphDemo` / `lc4jRagDemo`
-4. 点击 **编排** 打开可视化编辑器，拖拽组件并保存 / 发布
+3. **模型配置** 录入 DeepSeek Key 并设为默认后，可依次试跑 `agentRiskDemo` / `lc4jChatDemo` / `lc4jGraphDemo` / `lc4jRagDemo`
+4. 打开 **AI助手**，进行多轮对话（复用同一默认模型）
+5. 点击 **编排** 打开可视化编辑器，拖拽组件并保存 / 发布
 
 ---
 
@@ -305,7 +338,19 @@ RAG 默认知识库位于模块资源目录 `ruoyi-vue-liteflow-langchain/src/ma
 
 详细说明：[docs/LANGCHAIN.md](docs/LANGCHAIN.md)
 
-### 3. 可选配置
+### 3. 内部 AI 助手
+
+菜单 **LiteFlow编排 → AI助手**：后台多轮对话 + SSE 流式输出，复用「模型配置」默认模型与日配额。
+
+| 能力 | 说明 |
+|------|------|
+| 会话 | 仅本人可见，软删除；侧栏可折叠 |
+| 上下文 | 最近 N 条（默认 20） |
+| 交互 | 流式输出、停止生成、Markdown 渲染、复制 |
+
+已有库需执行 [sql/phase6_chat.sql](sql/phase6_chat.sql)。详见 [docs/CHAT.md](docs/CHAT.md)。
+
+### 4. 可选配置
 
 ```yaml
 liteflow:
@@ -316,6 +361,9 @@ liteflow:
         base-url: ${DEEPSEEK_BASE_URL:https://api.deepseek.com/v1}
     demo:
       model: ${DEEPSEEK_MODEL:deepseek-chat}
+  chat:
+    history-limit: 20
+    temperature: 0.3
   langchain:
     rag:
       max-results: 3
@@ -333,6 +381,7 @@ liteflow:
 | [docs/API.md](docs/API.md) | 内部 / 开放执行 API / Webhook |
 | [docs/AGENT.md](docs/AGENT.md) | Re-Act Agent（DeepSeek） |
 | [docs/LANGCHAIN.md](docs/LANGCHAIN.md) | LangChain4j / LangGraph4j / RAG |
+| [docs/CHAT.md](docs/CHAT.md) | 内部 AI 助手（多轮对话 + SSE） |
 | [docs/demo/](docs/demo/README.md) | Demo 请求样例 |
 
 Swagger：启动后访问 `/swagger-ui.html`，分组 **LiteFlow编排** / **LiteFlow开放API**。
@@ -381,6 +430,7 @@ docker compose up -d --build
 | 版本历史 | 快照、diff、回滚 |
 | 监控仪表盘 | 成功率与 Top 排行 |
 | 模型配置 | AI 模型与加密 API Key |
+| AI助手 | 内部多轮对话（SSE） |
 
 ---
 
@@ -398,8 +448,11 @@ A：检查请求头 `X-LiteFlow-Api-Key` 或具备权限 `liteflow:open:execute`
 **Q：决策路由无命中？**  
 A：确认库中存在 `newCustomerPromo` / `returningCustomerPromo`（namespace=`routeDemo`）且已发布，并对链路 **热刷新** 或重启后端。
 
-**Q：Agent / LangChain / RAG 试跑失败？**  
-A：检查「模型配置」或 `DEEPSEEK_API_KEY`、账户余额，以及库中是否存在对应 Demo 链路。RAG 首次启动需成功加载 Embedding；详见 [docs/AGENT.md](docs/AGENT.md)、[docs/LANGCHAIN.md](docs/LANGCHAIN.md)。
+**Q：Agent / LangChain / RAG / AI助手 失败？**  
+A：检查「模型配置」或 `DEEPSEEK_API_KEY`、账户余额，以及库中是否存在对应 Demo 链路 / `lf_chat_*` 表。RAG 首次启动需成功加载 Embedding；AI 助手需执行 [sql/phase6_chat.sql](sql/phase6_chat.sql) 并重新登录。详见 [docs/AGENT.md](docs/AGENT.md)、[docs/LANGCHAIN.md](docs/LANGCHAIN.md)、[docs/CHAT.md](docs/CHAT.md)。
+
+**Q：内部 AI 助手和链路里的 Agent 有何区别？**  
+A：AI 助手是后台多轮聊天页（`/liteflow/chat`），不走 EL 链路；Agent / LangChain 节点挂在 `lf_chain` 上，与业务组件混编试跑。二者共用模型配置与配额。
 
 **Q：如何只使用编排能力、不启用 AI？**  
 A：可不配置模型 Key；未执行 AI Demo 链路时不影响普通业务 Demo。亦可在 Maven 中不依赖 `ruoyi-vue-liteflow-langchain` / `ruoyi-vue-liteflow-agent`（需同步调整 admin 模块依赖）。

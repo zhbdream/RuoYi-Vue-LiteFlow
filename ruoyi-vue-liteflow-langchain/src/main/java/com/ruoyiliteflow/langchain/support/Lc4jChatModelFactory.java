@@ -8,7 +8,9 @@ import com.ruoyiliteflow.agent.service.ILfAgentModelService;
 import com.ruoyiliteflow.common.exception.ServiceException;
 import com.ruoyiliteflow.common.utils.StringUtils;
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
+import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
 
 /**
  * 从「模型配置」或 yml/环境变量组装 OpenAI 兼容 {@link ChatModel}（DeepSeek 等）
@@ -36,6 +38,23 @@ public class Lc4jChatModelFactory
                 .baseUrl(cred.getBaseUrl())
                 .modelName(cred.getModelName())
                 .temperature(0.2)
+                .build();
+    }
+
+    /** 内部助手流式对话 */
+    public StreamingChatModel createStreamingChatModel()
+    {
+        return createStreamingChatModel(0.3);
+    }
+
+    public StreamingChatModel createStreamingChatModel(double temperature)
+    {
+        Lc4jModelCredential cred = resolveCredential();
+        return OpenAiStreamingChatModel.builder()
+                .apiKey(cred.getApiKey())
+                .baseUrl(cred.getBaseUrl())
+                .modelName(cred.getModelName())
+                .temperature(temperature)
                 .build();
     }
 

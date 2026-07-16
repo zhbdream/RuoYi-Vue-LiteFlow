@@ -17,6 +17,14 @@
 2. 新增 DeepSeek 模型，填写 API Key，勾选 **默认**
 3. Key AES 加密入库，接口只返回 `******（已配置）`
 
+<p align="center">
+  <img src="img/模型配置1.png" alt="模型配置列表" width="640" />
+</p>
+
+<p align="center">
+  <img src="img/模型配置2.png" alt="新增模型" width="640" />
+</p>
+
 ### 回退：yml / 环境变量
 
 ```yaml
