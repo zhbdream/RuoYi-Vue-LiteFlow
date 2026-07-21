@@ -1,0 +1,45 @@
+### MCP info
+GET http://localhost:8090/mcp/info
+
+### List all tools
+GET http://localhost:8090/mcp/tools
+X-MCP-Api-Key: ruoyi-mcp-key-change-me
+
+### Chat completion
+POST http://localhost:8090/mcp/ai-core/tools/chat_completion
+Content-Type: application/json
+X-MCP-Api-Key: ruoyi-mcp-key-change-me
+
+{
+  "userMessage": "用一句话介绍本系统",
+  "principal": "demo"
+}
+
+### Risk analyze
+POST http://localhost:8090/mcp/ai-core/tools/risk_analyze
+Content-Type: application/json
+X-MCP-Api-Key: ruoyi-mcp-key-change-me
+
+{
+  "orderId": "ORD-MCP-1001",
+  "userId": 2001,
+  "userType": "NEW",
+  "amount": 9999,
+  "scene": "checkout"
+}
+
+### RAG ask
+POST http://localhost:8090/mcp/ai-core/tools/rag_ask
+Content-Type: application/json
+X-MCP-Api-Key: ruoyi-mcp-key-change-me
+
+{
+  "question": "下单后第5天衣服尺码不合适，可以退货吗？"
+}
+
+### Governance list chains
+POST http://localhost:8090/mcp/lf-governance/tools/list_chains
+Content-Type: application/json
+X-MCP-Api-Key: ruoyi-mcp-key-change-me
+
+{}

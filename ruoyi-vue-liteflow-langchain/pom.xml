@@ -27,6 +27,12 @@
             <artifactId>ruoyi-vue-liteflow-agent</artifactId>
         </dependency>
 
+        <!-- AI Facade（与 LiteFlow 解耦的内核） -->
+        <dependency>
+            <groupId>com.ruoyiliteflow</groupId>
+            <artifactId>ruoyi-vue-liteflow-ai-core</artifactId>
+        </dependency>
+
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j</artifactId>

@@ -1,0 +1,35 @@
+### Chat Agent
+POST http://localhost:8091/agent/chat/complete
+Content-Type: application/json
+
+{
+  "userMessage": "你好，介绍一下你自己"
+}
+
+### Risk Agent
+POST http://localhost:8092/agent/risk/analyze
+Content-Type: application/json
+
+{
+  "orderId": "ORD-MCP-1001",
+  "userId": 2001,
+  "userType": "NEW",
+  "amount": 9999,
+  "scene": "checkout"
+}
+
+### RAG Agent
+POST http://localhost:8093/agent/rag/ask
+Content-Type: application/json
+
+{
+  "question": "下单后第5天衣服尺码不合适，可以退货或换货吗？运费谁承担？"
+}
+
+### Ops Agent
+POST http://localhost:8094/agent/ops/chat
+Content-Type: application/json
+
+{
+  "userMessage": "现在有哪些链路？成功率怎么样？"
+}

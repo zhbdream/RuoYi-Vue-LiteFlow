@@ -10,7 +10,9 @@
 | [AGENT.md](AGENT.md) | Re-Act Agent（DeepSeek）配置与 Demo7 |
 | [LANGCHAIN.md](LANGCHAIN.md) | LangChain4j / LangGraph4j / RAG（Demo8/9/10） |
 | [CHAT.md](CHAT.md) | 内部 AI 助手（多轮对话 + SSE） |
+| [MCP_AGENT.md](MCP_AGENT.md) | Phase 7：MCP Server + 独立多 Agent（开源演示） |
 | [demo/README.md](demo/README.md) | Demo 请求样例 |
+| [demo/agent/README.md](demo/agent/README.md) | MCP / Agent 独立进程体验 |
 | [img/README.md](img/README.md) | 界面截图素材索引 |
 
 ## Demo 快速跳转

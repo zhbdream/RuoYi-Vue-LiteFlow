@@ -56,6 +56,17 @@ Authorization: Bearer <token>
 | lc4jGraphDemo | Phase 5 | lc4jGraphDemo-request.json | LangGraph4j StateGraph 条件边风控 |
 | lc4jRagDemo | Phase 5 | lc4jRagDemo-request.json | LangChain4j RAG 售后知识问答 |
 
+## Phase 7：MCP + 独立 Agent
+
+无需启动完整 admin / MySQL（LLM 需 `DEEPSEEK_API_KEY`）：
+
+| 服务 | 端口 | 说明 |
+|------|------|------|
+| MCP Server | 8090 | http://localhost:8090/ Playground |
+| Chat / Risk / RAG / Ops Agent | 8091~8094 | 各端口首页调试页 |
+
+样例：[mcp-ai-core/](mcp-ai-core/)、[agent/](agent/)。设计说明：[MCP_AGENT.md](../MCP_AGENT.md)。
+
 **决策路由说明：** 非单 chain 执行。在链路管理中配置 `route_el` + `namespace`，通过 `executeRouteChain` 按入参命中规则。Demo5 包含 `newCustomerPromo`、`returningCustomerPromo` 两条链（namespace=`routeDemo`）。样例见 `routeDemo-request.json`。
 
 **降级 Demo 说明：** 需 `liteflow.fallback-cmp-enable=true`。EL 为 `THEN(declareHello, node("ghostNode"), declareBye)`，`ghostNode` 不存在时走 `fallbackCommon`。

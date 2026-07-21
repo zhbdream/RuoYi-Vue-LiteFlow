@@ -16,11 +16,11 @@
 
 <p align="center">
   <strong>开箱即用的 Java 业务编排中台</strong><br/>
-  若依权限后台 + LiteFlow 规则引擎 + AntV X6 可视化编排 + AI 节点扩展
+  若依权限后台 + LiteFlow 规则引擎 + AntV X6 可视化编排 + AI / MCP 扩展
 </p>
 
 <p align="center">
-  拖拽画流程 · EL 双向同步 · 规则热更新 · Re-Act Agent · LangChain4j / LangGraph4j · RAG · 内部 AI 助手 · 执行监控 · 开放 API
+  拖拽画流程 · EL 双向同步 · 规则热更新 · Re-Act Agent · LangChain4j / LangGraph4j · RAG · 内部 AI 助手 · MCP / 多 Agent · 执行监控 · 开放 API
 </p>
 
 > Gitee / GitHub 内容同步镜像。提 Issue、PR 任选其一即可。
@@ -38,12 +38,13 @@
 - **LangGraph4j**（StateGraph 条件边）
 - **RAG**（本地 Embedding + 内存向量库 + 售后知识问答 Demo）
 - **内部 AI 助手**（后台多轮对话 + SSE，复用模型配置与配额）
+- **Phase 7：MCP Server + 独立多 Agent**（系统能力封装为 Tools；Chat / Risk / RAG / Ops 与 LiteFlow 解耦）
 
-AI 节点与普通 Java / 脚本节点可在同一条 EL 链路中混编，共用模型配置、日配额、执行日志与试跑洞察展示。
+AI 节点与普通 Java / 脚本节点可在同一条 EL 链路中混编，共用模型配置、日配额、执行日志与试跑洞察展示。另提供**不依赖 LiteFlow 的 MCP / Agent 独立进程**，便于二次开发与单独部署。
 
-适合作为团队内部的 **规则编排中台**，或二次开发动态定价、风控策略、智能客服、知识问答等场景的基础工程。
+适合作为团队内部的 **规则编排中台**，或二次开发动态定价、风控策略、智能客服、知识问答、**MCP / Agent 助手**等场景的基础工程。
 
-> **定位说明：** 本项目以 **LiteFlow 逻辑编排** 为骨架；AI 能力通过独立模块接入，可按需启用。内部 AI 助手面向后台运维 / 开发自用，并非对标豆包 / Kimi 的独立聊天产品。
+> **定位说明：** 本项目以 **LiteFlow 逻辑编排** 为骨架；AI 能力通过独立模块接入，可按需启用。Phase 7 的 MCP / Agent 与编排引擎解耦，可单独启动。内部 AI 助手面向后台运维 / 开发自用，并非对标豆包 / Kimi 的独立聊天产品。
 
 ---
 
@@ -69,6 +70,8 @@ AI 节点与普通 Java / 脚本节点可在同一条 EL 链路中混编，共�
 | **LangGraph4j** | StateGraph 多步推理与条件边，封装为单 LiteFlow 节点 |
 | **RAG 问答** | 本地 All-MiniLM Embedding + 内存向量库，内置售后知识库 Demo |
 | **内部 AI 助手** | 后台多轮对话 + SSE，复用模型配置与配额 |
+| **MCP Server** | 系统能力封装为 Tools（ai-core / lf-governance），HTTP Playground + 简化 stdio |
+| **独立多 Agent** | Chat / Risk / RAG / Ops 独立进程，经 MCP 调用系统能力，与 LiteFlow 解耦 |
 
 ---
 
@@ -268,7 +271,16 @@ npm run dev
 
 浏览器访问控制台提示地址，默认账号：**admin / admin123**。
 
-### 5. 快速体验
+### 5. （可选）Phase 7：仅 MCP + Agent，不启 admin
+
+无需 MySQL。配置 `DEEPSEEK_API_KEY` 后，在 IDEA 依次运行：
+
+1. `com.ruoyiliteflow.mcp.McpServerApplication` → http://localhost:8090/
+2. `AgentChatApplication` / `AgentRiskApplication` / `AgentRagApplication` / `AgentOpsApplication`（8091～8094）
+
+说明见 [docs/MCP_AGENT.md](docs/MCP_AGENT.md)。
+
+### 6. 快速体验
 
 1. 登录 → **LiteFlow编排 → 链路管理**
 2. 对 `helloChain` 点击 **试跑**
@@ -296,6 +308,8 @@ npm run dev
 | `lc4jRagDemo` | LangChain4j RAG | 售后知识库问答 |
 
 样例请求 JSON：[docs/demo/](docs/demo/README.md)
+
+**Phase 7 独立进程（非链路 Demo）：** 无需启动 admin / 前端。MCP `:8090` + Chat/Risk/RAG/Ops Agent `:8091`～`:8094`，浏览器打开各端口首页即可体验。详见 [docs/MCP_AGENT.md](docs/MCP_AGENT.md)、[docs/demo/agent/](docs/demo/agent/README.md)。
 
 **决策路由试跑：** 链路管理 → **决策路由试跑**
 
@@ -350,7 +364,25 @@ RAG 默认知识库位于模块资源目录 `ruoyi-vue-liteflow-langchain/src/ma
 
 已有库需执行 [sql/phase6_chat.sql](sql/phase6_chat.sql)。详见 [docs/CHAT.md](docs/CHAT.md)。
 
-### 4. 可选配置
+### 4. MCP Server + 独立多 Agent（Phase 7）
+
+将系统能力封装为 **MCP Tools**，再以独立 Agent 进程消费（**不依赖 LiteFlow EL**）：
+
+| 进程 | 端口 | 说明 |
+|------|------|------|
+| `McpServerApplication` | 8090 | Tools + HTTP Playground（http://localhost:8090/） |
+| `AgentChatApplication` | 8091 | 对话助手 |
+| `AgentRiskApplication` | 8092 | 风控助手 |
+| `AgentRagApplication` | 8093 | 售后知识问答 |
+| `AgentOpsApplication` | 8094 | 编排运维助手 |
+
+- 鉴权：`X-MCP-Api-Key`（默认 `ruoyi-mcp-key-change-me`，可用环境变量 `RUOYI_MCP_API_KEY`）
+- 模型：环境变量 `DEEPSEEK_API_KEY`（独立进程不读后台「模型配置」库表）
+- 与后台「AI助手」菜单：**并存**；菜单仍走 `/liteflow/chat`（8080），Phase 7 Agent 走 8091～8094
+
+详细说明与二次开发建议：[docs/MCP_AGENT.md](docs/MCP_AGENT.md)
+
+### 5. 可选配置
 
 ```yaml
 liteflow:
@@ -382,6 +414,7 @@ liteflow:
 | [docs/AGENT.md](docs/AGENT.md) | Re-Act Agent（DeepSeek） |
 | [docs/LANGCHAIN.md](docs/LANGCHAIN.md) | LangChain4j / LangGraph4j / RAG |
 | [docs/CHAT.md](docs/CHAT.md) | 内部 AI 助手（多轮对话 + SSE） |
+| [docs/MCP_AGENT.md](docs/MCP_AGENT.md) | Phase 7：MCP Server + 独立多 Agent |
 | [docs/demo/](docs/demo/README.md) | Demo 请求样例 |
 
 Swagger：启动后访问 `/swagger-ui.html`，分组 **LiteFlow编排** / **LiteFlow开放API**。
@@ -395,6 +428,12 @@ RuoYi-Vue-LiteFlow/
 ├── ruoyi-vue-liteflow-liteflow/   # LiteFlow 核心：组件、链路、执行、审计
 ├── ruoyi-vue-liteflow-agent/      # Re-Act Agent（DeepSeek）扩展模块
 ├── ruoyi-vue-liteflow-langchain/  # LangChain4j / LangGraph4j / RAG 扩展模块
+├── ruoyi-vue-liteflow-ai-core/    # AI Facade（无 LiteFlow）
+├── ruoyi-vue-liteflow-mcp-server/ # MCP Server（HTTP Playground + stdio）
+├── ruoyi-vue-liteflow-agent-chat/ # 独立 Chat Agent :8091
+├── ruoyi-vue-liteflow-agent-risk/ # 独立 Risk Agent :8092
+├── ruoyi-vue-liteflow-agent-rag/  # 独立 RAG Agent :8093
+├── ruoyi-vue-liteflow-agent-ops/  # 独立 Ops Agent :8094
 ├── ruoyi-vue-liteflow-admin/      # Spring Boot 启动与 REST API
 ├── ruoyi-vue-liteflow-ui/         # Vue 管理前端（含 LiteFlowEditor）
 ├── sql/                           # 初始化与增量 SQL
@@ -454,8 +493,11 @@ A：检查「模型配置」或 `DEEPSEEK_API_KEY`、账户余额，以及库中
 **Q：内部 AI 助手和链路里的 Agent 有何区别？**  
 A：AI 助手是后台多轮聊天页（`/liteflow/chat`），不走 EL 链路；Agent / LangChain 节点挂在 `lf_chain` 上，与业务组件混编试跑。二者共用模型配置与配额。
 
+**Q：如何体验 MCP / 独立 Agent？需要开前端吗？**  
+A：不需要。配置 `DEEPSEEK_API_KEY` 后启动 `McpServerApplication`（8090）与对应 `Agent*Application`，浏览器访问 http://localhost:8090/ 或各 Agent 端口首页即可。详见 [docs/MCP_AGENT.md](docs/MCP_AGENT.md)。
+
 **Q：如何只使用编排能力、不启用 AI？**  
-A：可不配置模型 Key；未执行 AI Demo 链路时不影响普通业务 Demo。亦可在 Maven 中不依赖 `ruoyi-vue-liteflow-langchain` / `ruoyi-vue-liteflow-agent`（需同步调整 admin 模块依赖）。
+A：可不配置模型 Key；未执行 AI Demo 链路时不影响普通业务 Demo。亦可在 Maven 中不依赖 `ruoyi-vue-liteflow-langchain` / `ruoyi-vue-liteflow-agent`（需同步调整 admin 模块依赖）。Phase 7 的 `mcp-server` / `agent-*` 模块也可不启动。
 
 ---
 
@@ -472,6 +514,7 @@ A：可不配置模型 Key；未执行 AI Demo 链路时不影响普通业务 De
 - [LiteFlow AI Agent](https://liteflow.cc/) — Re-Act Agent 扩展
 - [LangChain4j](https://docs.langchain4j.info/) — Java LLM 应用框架
 - [LangGraph4j](https://github.com/langgraph4j/langgraph4j) — Java 有状态 Agent 图
+- [Model Context Protocol](https://modelcontextprotocol.io/) — Agent 工具协议（本仓库 Phase 7）
 - [AntV X6](https://x6.antv.antgroup.com/) — 图编辑引擎
 - [DeepSeek](https://www.deepseek.com/) — 本仓库 Demo 默认模型供应商
 

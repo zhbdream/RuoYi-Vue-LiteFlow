@@ -194,6 +194,45 @@
                 <version>${ruoyi-vue-liteflow.version}</version>
             </dependency>
 
+            <!-- AI 内核（无 LiteFlow） -->
+            <dependency>
+                <groupId>com.ruoyiliteflow</groupId>
+                <artifactId>ruoyi-vue-liteflow-ai-core</artifactId>
+                <version>${ruoyi-vue-liteflow.version}</version>
+            </dependency>
+
+            <!-- MCP Server -->
+            <dependency>
+                <groupId>com.ruoyiliteflow</groupId>
+                <artifactId>ruoyi-vue-liteflow-mcp-server</artifactId>
+                <version>${ruoyi-vue-liteflow.version}</version>
+            </dependency>
+
+            <!-- 独立 Chat Agent -->
+            <dependency>
+                <groupId>com.ruoyiliteflow</groupId>
+                <artifactId>ruoyi-vue-liteflow-agent-chat</artifactId>
+                <version>${ruoyi-vue-liteflow.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.ruoyiliteflow</groupId>
+                <artifactId>ruoyi-vue-liteflow-agent-risk</artifactId>
+                <version>${ruoyi-vue-liteflow.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.ruoyiliteflow</groupId>
+                <artifactId>ruoyi-vue-liteflow-agent-rag</artifactId>
+                <version>${ruoyi-vue-liteflow.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.ruoyiliteflow</groupId>
+                <artifactId>ruoyi-vue-liteflow-agent-ops</artifactId>
+                <version>${ruoyi-vue-liteflow.version}</version>
+            </dependency>
+
             <dependency>
                 <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-bom</artifactId>
@@ -254,6 +293,12 @@
         <module>ruoyi-vue-liteflow-liteflow</module>
         <module>ruoyi-vue-liteflow-agent</module>
         <module>ruoyi-vue-liteflow-langchain</module>
+        <module>ruoyi-vue-liteflow-ai-core</module>
+        <module>ruoyi-vue-liteflow-mcp-server</module>
+        <module>ruoyi-vue-liteflow-agent-chat</module>
+        <module>ruoyi-vue-liteflow-agent-risk</module>
+        <module>ruoyi-vue-liteflow-agent-rag</module>
+        <module>ruoyi-vue-liteflow-agent-ops</module>
     </modules>
     <packaging>pom</packaging>
 

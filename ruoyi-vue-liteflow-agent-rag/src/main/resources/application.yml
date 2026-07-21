@@ -1,0 +1,23 @@
+server.port: 8093
+
+ruoyi:
+  ai:
+    openai:
+      api-key: ${DEEPSEEK_API_KEY:}
+      base-url: ${DEEPSEEK_BASE_URL:https://api.deepseek.com/v1}
+      model: ${DEEPSEEK_MODEL:deepseek-chat}
+  agent:
+    rag:
+      use-mcp: true
+      mcp-base-url: http://localhost:8090
+      mcp-api-key: ${RUOYI_MCP_API_KEY:ruoyi-mcp-key-change-me}
+      mcp-header-name: X-MCP-Api-Key
+
+spring:
+  application:
+    name: ruoyi-agent-rag
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration
+      - org.springframework.boot.data.redis.autoconfigure.RedisAutoConfiguration
+      - org.mybatis.spring.boot.autoconfigure.MybatisAutoConfiguration

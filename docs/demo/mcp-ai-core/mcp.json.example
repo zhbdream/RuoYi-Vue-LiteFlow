@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "ruoyi-liteflow-ai-core": {
+      "command": "java",
+      "args": [
+        "-cp",
+        "REPLACE_WITH_ABSOLUTE_PATH/ruoyi-vue-liteflow-mcp-server/target/ruoyi-vue-liteflow-mcp-server-3.9.2.jar",
+        "com.ruoyiliteflow.mcp.stdio.McpStdioLauncher"
+      ],
+      "env": {
+        "DEEPSEEK_API_KEY": "YOUR_KEY",
+        "RUOYI_MCP_API_KEY": "ruoyi-mcp-key-change-me"
+      }
+    }
+  }
+}
