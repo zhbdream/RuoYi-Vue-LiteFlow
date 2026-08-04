@@ -12,6 +12,22 @@ ruoyi:
   addressEnabled: false
   # 验证码类型 math 数字计算 char 字符验证
   captchaType: math
+  # AI Kit 配置面（嵌入 admin）
+  ai-kit:
+    platform:
+      enabled: true
+    # 可选：保存 mcp 类型工具时推送到独立 MCP 内存注册表
+    mcp:
+      register-url: ${RUOYI_MCP_REGISTER_URL:http://127.0.0.1:8090/mcp/dynamic-tools}
+      api-key: ${RUOYI_MCP_API_KEY:ruoyi-mcp-key-change-me}
+      api-key-header: X-MCP-Api-Key
+  ai:
+    openai:
+      api-key: ${DEEPSEEK_API_KEY:}
+      base-url: ${DEEPSEEK_BASE_URL:https://api.deepseek.com/v1}
+      model: ${DEEPSEEK_MODEL:deepseek-chat}
+    crypto:
+      secret: ${RUOYI_AI_AES_SECRET:${LITEFLOW_AGENT_AES_SECRET:ruoyi-liteflow-aes}}
 
 # 开发环境配置
 server:

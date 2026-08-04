@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyiliteflow.aikit.platform.mapper.AiToolMapper">
+
+    <resultMap id="AiToolResult" type="com.ruoyiliteflow.aikit.platform.domain.AiTool">
+        <id     property="id"              column="id"/>
+        <result property="toolCode"        column="tool_code"/>
+        <result property="toolName"        column="tool_name"/>
+        <result property="toolType"        column="tool_type"/>
+        <result property="description"     column="description"/>
+        <result property="inputSchemaJson" column="input_schema_json"/>
+        <result property="invokeKey"       column="invoke_key"/>
+        <result property="mcpServerKey"    column="mcp_server_key"/>
+        <result property="enabled"         column="enabled"/>
+        <result property="createBy"        column="create_by"/>
+        <result property="createTime"      column="create_time"/>
+        <result property="updateBy"        column="update_by"/>
+        <result property="updateTime"      column="update_time"/>
+        <result property="remark"          column="remark"/>
+    </resultMap>
+
+    <sql id="selectVo">
+        select id, tool_code, tool_name, tool_type, description, input_schema_json,
+               invoke_key, mcp_server_key, enabled,
+               create_by, create_time, update_by, update_time, remark
+        from ai_tool
+    </sql>
+
+    <select id="selectAiToolList" parameterType="com.ruoyiliteflow.aikit.platform.domain.AiTool" resultMap="AiToolResult">
+        <include refid="selectVo"/>
+        <where>
+            <if test="toolCode != null and toolCode != ''">AND tool_code like concat('%', #{toolCode}, '%')</if>
+            <if test="toolType != null and toolType != ''">AND tool_type = #{toolType}</if>
+            <if test="enabled != null and enabled != ''">AND enabled = #{enabled}</if>
+            <if test="toolName != null and toolName != ''">AND tool_name like concat('%', #{toolName}, '%')</if>
+        </where>
+        order by id desc
+    </select>
+
+    <select id="selectAiToolById" parameterType="Long" resultMap="AiToolResult">
+        <include refid="selectVo"/> where id = #{id}
+    </select>
+
+    <select id="selectAiToolByCode" parameterType="String" resultMap="AiToolResult">
+        <include refid="selectVo"/> where tool_code = #{toolCode}
+    </select>
+
+    <select id="selectEnabledByCodes" resultMap="AiToolResult">
+        <include refid="selectVo"/>
+        where enabled = '1'
+        <if test="codes != null and codes.size() > 0">
+            and tool_code in
+            <foreach collection="codes" item="code" open="(" separator="," close=")">#{code}</foreach>
+        </if>
+        order by id
+    </select>
+
+    <select id="selectEnabledMcpTools" resultMap="AiToolResult">
+        <include refid="selectVo"/>
+        where enabled = '1' and tool_type = 'mcp'
+        order by id
+    </select>
+
+    <insert id="insertAiTool" parameterType="com.ruoyiliteflow.aikit.platform.domain.AiTool" useGeneratedKeys="true" keyProperty="id">
+        insert into ai_tool (
+            tool_code, tool_name, tool_type, description, input_schema_json,
+            invoke_key, mcp_server_key, enabled, create_by, create_time, remark
+        ) values (
+            #{toolCode}, #{toolName}, #{toolType}, #{description}, #{inputSchemaJson},
+            #{invokeKey}, #{mcpServerKey}, #{enabled}, #{createBy}, sysdate(), #{remark}
+        )
+    </insert>
+
+    <update id="updateAiTool" parameterType="com.ruoyiliteflow.aikit.platform.domain.AiTool">
+        update ai_tool
+        <set>
+            <if test="toolCode != null and toolCode != ''">tool_code = #{toolCode},</if>
+            <if test="toolName != null">tool_name = #{toolName},</if>
+            <if test="toolType != null and toolType != ''">tool_type = #{toolType},</if>
+            <if test="description != null">description = #{description},</if>
+            <if test="inputSchemaJson != null">input_schema_json = #{inputSchemaJson},</if>
+            <if test="invokeKey != null">invoke_key = #{invokeKey},</if>
+            <if test="mcpServerKey != null">mcp_server_key = #{mcpServerKey},</if>
+            <if test="enabled != null">enabled = #{enabled},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            update_time = sysdate(),
+            <if test="remark != null">remark = #{remark},</if>
+        </set>
+        where id = #{id}
+    </update>
+
+    <delete id="deleteAiToolByIds">
+        delete from ai_tool where id in
+        <foreach collection="array" item="id" open="(" separator="," close=")">#{id}</foreach>
+    </delete>
+</mapper>

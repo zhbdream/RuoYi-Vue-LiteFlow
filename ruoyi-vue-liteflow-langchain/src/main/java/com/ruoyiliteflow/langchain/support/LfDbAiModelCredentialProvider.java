@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Component;
 import com.ruoyiliteflow.agent.domain.LfAgentModel;
@@ -19,6 +20,7 @@ import com.ruoyiliteflow.common.utils.StringUtils;
  */
 @Component
 @Primary
+@ConditionalOnProperty(prefix = "ruoyi.ai-kit.platform", name = "enabled", havingValue = "false", matchIfMissing = true)
 public class LfDbAiModelCredentialProvider implements AiModelCredentialProvider
 {
     @Autowired

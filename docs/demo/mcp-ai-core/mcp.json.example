@@ -1,10 +1,10 @@
 {
   "mcpServers": {
-    "ruoyi-liteflow-ai-core": {
+    "ruoyi-ai-kit": {
       "command": "java",
       "args": [
         "-cp",
-        "REPLACE_WITH_ABSOLUTE_PATH/ruoyi-vue-liteflow-mcp-server/target/ruoyi-vue-liteflow-mcp-server-3.9.2.jar",
+        "REPLACE_WITH_ABSOLUTE_PATH/ruoyi-vue-liteflow-ai-kit-mcp/target/ruoyi-vue-liteflow-ai-kit-mcp-3.9.2.jar",
         "com.ruoyiliteflow.mcp.stdio.McpStdioLauncher"
       ],
       "env": {

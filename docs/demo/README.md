@@ -63,7 +63,7 @@ Authorization: Bearer <token>
 | 服务 | 端口 | 说明 |
 |------|------|------|
 | MCP Server | 8090 | http://localhost:8090/ Playground |
-| Chat / Risk / RAG / Ops Agent | 8091~8094 | 各端口首页调试页 |
+| AI Kit Boot | 8091 | Chat/Risk/RAG/Ops 合一调试页 |
 
 样例：[mcp-ai-core/](mcp-ai-core/)、[agent/](agent/)。设计说明：[MCP_AGENT.md](../MCP_AGENT.md)。
 

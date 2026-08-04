@@ -10,9 +10,11 @@
 | [AGENT.md](AGENT.md) | Re-Act Agent（DeepSeek）配置与 Demo7 |
 | [LANGCHAIN.md](LANGCHAIN.md) | LangChain4j / LangGraph4j / RAG（Demo8/9/10） |
 | [CHAT.md](CHAT.md) | 内部 AI 助手（多轮对话 + SSE） |
-| [MCP_AGENT.md](MCP_AGENT.md) | Phase 7：MCP Server + 独立多 Agent（开源演示） |
+| [MCP_AGENT.md](MCP_AGENT.md) | Phase 7：AI Kit（MCP + 独立 Agent，与 LiteFlow 解耦） |
+| [AI_KIT_PLATFORM.md](AI_KIT_PLATFORM.md) | Phase 8：AI Kit 配置面（模型/工具/智能体/知识库/技能/记忆/上下文，已落地） |
 | [demo/README.md](demo/README.md) | Demo 请求样例 |
 | [demo/agent/README.md](demo/agent/README.md) | MCP / Agent 独立进程体验 |
+| [demo/aikit/README.md](demo/aikit/README.md) | Phase 8 配置驱动试跑 |
 | [img/README.md](img/README.md) | 界面截图素材索引 |
 
 ## Demo 快速跳转
@@ -38,3 +40,4 @@
 |------|------|
 | 模型配置 | AES 加密入库的 OpenAI 兼容 Key（DeepSeek 等） |
 | AI助手 | 后台内部多轮对话，复用默认模型与配额 |
+| AI能力（Phase 8） | 模型 / 工具 / 智能体 / 知识库 / 技能 / 记忆 / 上下文（需 phase8* SQL） |

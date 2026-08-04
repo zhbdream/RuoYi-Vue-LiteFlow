@@ -1,0 +1,15 @@
+# MCP 动态 Tool：从 ai_tool 表加载（与 admin 共享库）
+# 启动：--spring.profiles.active=dynamic
+# 或设环境变量后启用 ruoyi.mcp.dynamic-tools.enabled=true
+
+ruoyi:
+  mcp:
+    dynamic-tools:
+      enabled: true
+
+spring:
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://${AIKIT_DB_HOST:localhost}:${AIKIT_DB_PORT:3306}/${AIKIT_DB_NAME:ry-vue}?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=true&serverTimezone=GMT%2B8
+    username: ${AIKIT_DB_USER:root}
+    password: ${AIKIT_DB_PASSWORD:password}

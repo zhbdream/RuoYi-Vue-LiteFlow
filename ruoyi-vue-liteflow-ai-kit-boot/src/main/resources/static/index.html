@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AI Kit Boot</title>
+  <style>
+    :root { --bg:#0f1419; --panel:#1a2332; --text:#e7ecf3; --muted:#8b9bb4; --accent:#3d8bfd; --ok:#3dd68c; }
+    body { margin:0; font-family:system-ui,sans-serif; background:linear-gradient(160deg,#0f1419,#182433); color:var(--text); }
+    main { max-width:820px; margin:0 auto; padding:24px; }
+    .card { background:var(--panel); border:1px solid #2a3548; border-radius:14px; padding:16px; margin-bottom:14px; }
+    label { display:block; color:var(--muted); font-size:.85rem; margin:8px 0 6px; }
+    select, textarea { width:100%; box-sizing:border-box; background:#0f1622; border:1px solid #334155; color:var(--text); border-radius:10px; padding:10px; }
+    textarea { min-height:120px; font-family:ui-monospace,Consolas,monospace; font-size:.85rem; }
+    button { margin-top:10px; background:var(--accent); border:0; color:#fff; padding:10px 16px; border-radius:10px; cursor:pointer; font-weight:600; }
+    pre { background:#0b111a; border-radius:10px; padding:12px; white-space:pre-wrap; word-break:break-word; max-height:360px; overflow:auto; }
+    a { color:var(--ok); }
+    h1 { margin:0 0 8px; font-size:1.4rem; }
+    p { color:var(--muted); }
+  </style>
+</head>
+<body>
+<main>
+  <h1>AI Kit Boot :8091</h1>
+  <p>合并 Chat / Risk / RAG / Ops。请先启动 MCP（<a href="http://localhost:8090/" target="_blank">:8090</a>），并配置 <code>DEEPSEEK_API_KEY</code>。</p>
+
+  <section class="card">
+    <label>能力</label>
+    <select id="mode" onchange="fillSample()">
+      <option value="chat">Chat — POST /agent/chat/complete</option>
+      <option value="risk">Risk — POST /agent/risk/analyze</option>
+      <option value="rag">RAG — POST /agent/rag/ask</option>
+      <option value="ops">Ops — POST /agent/ops/chat</option>
+    </select>
+    <label>请求 JSON / 文本</label>
+    <textarea id="body"></textarea>
+    <button type="button" onclick="send()">调用</button>
+  </section>
+
+  <section class="card">
+    <label>响应</label>
+    <pre id="out">等待操作…</pre>
+  </section>
+</main>
+<script>
+const samples = {
+  chat: { userMessage: '你好，用一句话介绍你自己' },
+  risk: { orderId: 'ORD-MCP-1001', userId: 2001, userType: 'NEW', amount: 9999, scene: 'checkout' },
+  rag: { question: '下单后第5天衣服尺码不合适，可以退货或换货吗？运费谁承担？' },
+  ops: { userMessage: '现在有哪些链路？成功率怎么样？' }
+};
+const paths = {
+  chat: '/agent/chat/complete',
+  risk: '/agent/risk/analyze',
+  rag: '/agent/rag/ask',
+  ops: '/agent/ops/chat'
+};
+function fillSample() {
+  const mode = document.getElementById('mode').value;
+  document.getElementById('body').value = JSON.stringify(samples[mode], null, 2);
+}
+async function send() {
+  const mode = document.getElementById('mode').value;
+  let payload;
+  try { payload = JSON.parse(document.getElementById('body').value || '{}'); }
+  catch (e) { document.getElementById('out').textContent = 'JSON 无效: ' + e.message; return; }
+  const r = await fetch(paths[mode], { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+  document.getElementById('out').textContent = JSON.stringify(await r.json(), null, 2);
+}
+fillSample();
+</script>
+</body>
+</html>

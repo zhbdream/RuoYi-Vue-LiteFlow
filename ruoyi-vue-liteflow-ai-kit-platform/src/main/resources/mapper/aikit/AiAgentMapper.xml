@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyiliteflow.aikit.platform.mapper.AiAgentMapper">
+
+    <resultMap id="AiAgentResult" type="com.ruoyiliteflow.aikit.platform.domain.AiAgent">
+        <id     property="id"            column="id"/>
+        <result property="agentCode"     column="agent_code"/>
+        <result property="agentName"     column="agent_name"/>
+        <result property="systemPrompt"  column="system_prompt"/>
+        <result property="modelId"       column="model_id"/>
+        <result property="temperature"   column="temperature"/>
+        <result property="contextPolicyId" column="context_policy_id"/>
+        <result property="enabled"       column="enabled"/>
+        <result property="createBy"      column="create_by"/>
+        <result property="createTime"    column="create_time"/>
+        <result property="updateBy"      column="update_by"/>
+        <result property="updateTime"    column="update_time"/>
+        <result property="remark"        column="remark"/>
+    </resultMap>
+
+    <sql id="selectVo">
+        select id, agent_code, agent_name, system_prompt, model_id, temperature, context_policy_id, enabled,
+               create_by, create_time, update_by, update_time, remark
+        from ai_agent
+    </sql>
+
+    <select id="selectAiAgentList" parameterType="com.ruoyiliteflow.aikit.platform.domain.AiAgent" resultMap="AiAgentResult">
+        <include refid="selectVo"/>
+        <where>
+            <if test="agentCode != null and agentCode != ''">AND agent_code like concat('%', #{agentCode}, '%')</if>
+            <if test="enabled != null and enabled != ''">AND enabled = #{enabled}</if>
+            <if test="agentName != null and agentName != ''">AND agent_name like concat('%', #{agentName}, '%')</if>
+        </where>
+        order by id desc
+    </select>
+
+    <select id="selectAiAgentById" parameterType="Long" resultMap="AiAgentResult">
+        <include refid="selectVo"/> where id = #{id}
+    </select>
+
+    <select id="selectAiAgentByCode" parameterType="String" resultMap="AiAgentResult">
+        <include refid="selectVo"/> where agent_code = #{agentCode}
+    </select>
+
+    <insert id="insertAiAgent" parameterType="com.ruoyiliteflow.aikit.platform.domain.AiAgent" useGeneratedKeys="true" keyProperty="id">
+        insert into ai_agent (
+            agent_code, agent_name, system_prompt, model_id, temperature, context_policy_id, enabled,
+            create_by, create_time, remark
+        ) values (
+            #{agentCode}, #{agentName}, #{systemPrompt}, #{modelId}, #{temperature}, #{contextPolicyId}, #{enabled},
+            #{createBy}, sysdate(), #{remark}
+        )
+    </insert>
+
+    <update id="updateAiAgent" parameterType="com.ruoyiliteflow.aikit.platform.domain.AiAgent">
+        update ai_agent
+        <set>
+            <if test="agentCode != null and agentCode != ''">agent_code = #{agentCode},</if>
+            <if test="agentName != null">agent_name = #{agentName},</if>
+            <if test="systemPrompt != null">system_prompt = #{systemPrompt},</if>
+            <if test="modelId != null">model_id = #{modelId},</if>
+            <if test="temperature != null">temperature = #{temperature},</if>
+            <if test="contextPolicyId != null">context_policy_id = #{contextPolicyId},</if>
+            <if test="enabled != null">enabled = #{enabled},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            update_time = sysdate(),
+            <if test="remark != null">remark = #{remark},</if>
+        </set>
+        where id = #{id}
+    </update>
+
+    <delete id="deleteAiAgentByIds">
+        delete from ai_agent where id in
+        <foreach collection="array" item="id" open="(" separator="," close=")">#{id}</foreach>
+    </delete>
+
+    <select id="selectToolIdsByAgentId" resultType="long">
+        select tool_id from ai_agent_tool where agent_id = #{agentId} order by sort, tool_id
+    </select>
+
+    <select id="selectToolCodesByAgentId" resultType="string">
+        select t.tool_code from ai_agent_tool agt
+        join ai_tool t on t.id = agt.tool_id
+        where agt.agent_id = #{agentId} and t.enabled = '1'
+        order by agt.sort, agt.tool_id
+    </select>
+
+    <delete id="deleteAgentTools">
+        delete from ai_agent_tool where agent_id = #{agentId}
+    </delete>
+
+    <insert id="insertAgentTool">
+        insert into ai_agent_tool (agent_id, tool_id, sort) values (#{agentId}, #{toolId}, #{sort})
+    </insert>
+
+    <select id="selectKbIdsByAgentId" resultType="long">
+        select kb_id from ai_agent_knowledge where agent_id = #{agentId} order by sort, kb_id
+    </select>
+
+    <select id="selectKnowledgeCodesByAgentId" resultType="string">
+        select kb.kb_code from ai_agent_knowledge agk
+        join ai_knowledge_base kb on kb.id = agk.kb_id
+        where agk.agent_id = #{agentId} and kb.status = '0'
+        order by agk.sort, agk.kb_id
+    </select>
+
+    <delete id="deleteAgentKnowledge">
+        delete from ai_agent_knowledge where agent_id = #{agentId}
+    </delete>
+
+    <insert id="insertAgentKnowledge">
+        insert into ai_agent_knowledge (agent_id, kb_id, sort) values (#{agentId}, #{kbId}, #{sort})
+    </insert>
+
+    <select id="selectSkillIdsByAgentId" resultType="long">
+        select skill_id from ai_agent_skill where agent_id = #{agentId} order by sort, skill_id
+    </select>
+
+    <select id="selectSkillCodesByAgentId" resultType="string">
+        select s.skill_code from ai_agent_skill ags
+        join ai_skill s on s.id = ags.skill_id
+        where ags.agent_id = #{agentId} and s.enabled = '1'
+        order by ags.sort, ags.skill_id
+    </select>
+
+    <delete id="deleteAgentSkills">
+        delete from ai_agent_skill where agent_id = #{agentId}
+    </delete>
+
+    <insert id="insertAgentSkill">
+        insert into ai_agent_skill (agent_id, skill_id, sort) values (#{agentId}, #{skillId}, #{sort})
+    </insert>
+</mapper>

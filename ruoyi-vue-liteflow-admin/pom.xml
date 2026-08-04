@@ -60,6 +60,12 @@
             <artifactId>ruoyi-vue-liteflow-langchain</artifactId>
         </dependency>
 
+        <!-- AI Kit 配置面（模型 / 工具 / 智能体） -->
+        <dependency>
+            <groupId>com.ruoyiliteflow</groupId>
+            <artifactId>ruoyi-vue-liteflow-ai-kit-platform</artifactId>
+        </dependency>
+
         <!-- 定时任务-->
         <dependency>
             <groupId>com.ruoyiliteflow</groupId>

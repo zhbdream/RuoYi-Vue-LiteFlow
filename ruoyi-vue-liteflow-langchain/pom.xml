@@ -30,7 +30,7 @@
         <!-- AI Facade（与 LiteFlow 解耦的内核） -->
         <dependency>
             <groupId>com.ruoyiliteflow</groupId>
-            <artifactId>ruoyi-vue-liteflow-ai-core</artifactId>
+            <artifactId>ruoyi-vue-liteflow-ai-kit-core</artifactId>
         </dependency>
 
         <dependency>

@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyiliteflow.aikit.platform.mapper.AiSkillMapper">
+
+    <resultMap id="AiSkillResult" type="com.ruoyiliteflow.aikit.platform.domain.AiSkill">
+        <id     property="id"          column="id"/>
+        <result property="skillCode"   column="skill_code"/>
+        <result property="skillName"   column="skill_name"/>
+        <result property="skillType"   column="skill_type"/>
+        <result property="content"     column="content"/>
+        <result property="description" column="description"/>
+        <result property="enabled"     column="enabled"/>
+        <result property="createBy"    column="create_by"/>
+        <result property="createTime"  column="create_time"/>
+        <result property="updateBy"    column="update_by"/>
+        <result property="updateTime"  column="update_time"/>
+        <result property="remark"      column="remark"/>
+    </resultMap>
+
+    <sql id="selectVo">
+        select id, skill_code, skill_name, skill_type, content, description, enabled,
+               create_by, create_time, update_by, update_time, remark
+        from ai_skill
+    </sql>
+
+    <select id="selectAiSkillList" parameterType="com.ruoyiliteflow.aikit.platform.domain.AiSkill" resultMap="AiSkillResult">
+        <include refid="selectVo"/>
+        <where>
+            <if test="skillCode != null and skillCode != ''">AND skill_code like concat('%', #{skillCode}, '%')</if>
+            <if test="skillType != null and skillType != ''">AND skill_type = #{skillType}</if>
+            <if test="enabled != null and enabled != ''">AND enabled = #{enabled}</if>
+            <if test="skillName != null and skillName != ''">AND skill_name like concat('%', #{skillName}, '%')</if>
+        </where>
+        order by id desc
+    </select>
+
+    <select id="selectAiSkillById" parameterType="Long" resultMap="AiSkillResult">
+        <include refid="selectVo"/> where id = #{id}
+    </select>
+
+    <select id="selectAiSkillByCode" parameterType="String" resultMap="AiSkillResult">
+        <include refid="selectVo"/> where skill_code = #{skillCode}
+    </select>
+
+    <select id="selectEnabledByCodes" resultMap="AiSkillResult">
+        <include refid="selectVo"/>
+        where enabled = '1'
+        <if test="codes != null and codes.size() > 0">
+            and skill_code in
+            <foreach collection="codes" item="code" open="(" separator="," close=")">#{code}</foreach>
+        </if>
+        order by id
+    </select>
+
+    <insert id="insertAiSkill" parameterType="com.ruoyiliteflow.aikit.platform.domain.AiSkill" useGeneratedKeys="true" keyProperty="id">
+        insert into ai_skill (
+            skill_code, skill_name, skill_type, content, description, enabled,
+            create_by, create_time, remark
+        ) values (
+            #{skillCode}, #{skillName}, #{skillType}, #{content}, #{description}, #{enabled},
+            #{createBy}, sysdate(), #{remark}
+        )
+    </insert>
+
+    <update id="updateAiSkill" parameterType="com.ruoyiliteflow.aikit.platform.domain.AiSkill">
+        update ai_skill
+        <set>
+            <if test="skillCode != null and skillCode != ''">skill_code = #{skillCode},</if>
+            <if test="skillName != null">skill_name = #{skillName},</if>
+            <if test="skillType != null and skillType != ''">skill_type = #{skillType},</if>
+            <if test="content != null">content = #{content},</if>
+            <if test="description != null">description = #{description},</if>
+            <if test="enabled != null">enabled = #{enabled},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            update_time = sysdate(),
+            <if test="remark != null">remark = #{remark},</if>
+        </set>
+        where id = #{id}
+    </update>
+
+    <delete id="deleteAiSkillByIds">
+        delete from ai_skill where id in
+        <foreach collection="array" item="id" open="(" separator="," close=")">#{id}</foreach>
+    </delete>
+</mapper>
