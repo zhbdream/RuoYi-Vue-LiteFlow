@@ -1,6 +1,6 @@
 <template>
   <div class="app-container">
-    <el-alert title="会话记忆由 AgentRuntime 按上下文策略自动写入；此处可查看与手工补录。" type="info" :closable="false" show-icon class="mb8" />
+    <el-alert title="会话记忆由 AgentRuntime 按上下文策略自动写入；超窗后会用当前模型生成摘要。可按 Agent+会话清理，或按天数清理过期。" type="info" :closable="false" show-icon class="mb8" />
     <el-form :model="queryParams" ref="queryForm" size="small" :inline="true" v-show="showSearch" label-width="90px">
       <el-form-item label="Agent" prop="agentCode">
         <el-input v-model="queryParams.agentCode" clearable @keyup.enter.native="handleQuery" />
@@ -27,6 +27,12 @@
       </el-col>
       <el-col :span="1.5">
         <el-button type="danger" plain icon="el-icon-delete" size="mini" :disabled="multiple" @click="handleDelete" v-hasPermi="['aikit:memory:remove']">删除</el-button>
+      </el-col>
+      <el-col :span="1.5">
+        <el-button type="warning" plain icon="el-icon-delete" size="mini" @click="handleClearSession" v-hasPermi="['aikit:memory:remove']">按会话清理</el-button>
+      </el-col>
+      <el-col :span="1.5">
+        <el-button size="mini" @click="handlePurge" v-hasPermi="['aikit:memory:remove']">清理过期</el-button>
       </el-col>
       <right-toolbar :showSearch.sync="showSearch" @queryTable="getList" />
     </el-row>
@@ -86,7 +92,7 @@
 </template>
 
 <script>
-import { listAiMemory, addAiMemory, delAiMemory } from '@/api/aikit/platform'
+import { listAiMemory, addAiMemory, delAiMemory, clearAiMemory, purgeAiMemory } from '@/api/aikit/platform'
 
 export default {
   name: 'Memory',
@@ -157,6 +163,32 @@ export default {
       this.$modal.confirm('是否确认删除？').then(() => delAiMemory(ids)).then(() => {
         this.getList()
         this.$modal.msgSuccess('删除成功')
+      }).catch(() => {})
+    },
+    handleClearSession() {
+      const agentCode = this.queryParams.agentCode
+      const sessionId = this.queryParams.sessionId
+      if (!agentCode || !sessionId) {
+        this.$modal.msgWarning('请先在筛选里填写 Agent 和会话')
+        return
+      }
+      this.$modal.confirm('确认清理 ' + agentCode + ' / ' + sessionId + ' 的全部记忆？').then(() => {
+        return clearAiMemory({ agentCode, sessionId })
+      }).then(res => {
+        this.$modal.msgSuccess(res.msg || '已清理')
+        this.getList()
+      }).catch(() => {})
+    },
+    handlePurge() {
+      this.$prompt('清理多少天前的记忆？', '清理过期', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        inputValue: '30',
+        inputPattern: /^[1-9]\d*$/,
+        inputErrorMessage: '请输入正整数'
+      }).then(({ value }) => purgeAiMemory(parseInt(value, 10))).then(res => {
+        this.$modal.msgSuccess(res.msg || '已清理')
+        this.getList()
       }).catch(() => {})
     }
   }

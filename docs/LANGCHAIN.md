@@ -14,8 +14,8 @@
 ## 前置条件
 
 1. JDK 17+
-2. 与 Agent 相同的 DeepSeek / OpenAI 兼容 Key（「模型配置」页默认模型，或 `DEEPSEEK_API_KEY`）
-3. 已执行增量 SQL：[sql/phase5_langchain.sql](../sql/phase5_langchain.sql)、[sql/phase5_rag.sql](../sql/phase5_rag.sql)，或全新导入含 Demo8/9/10 的 [sql/ry-vue.sql](../sql/ry-vue.sql)
+2. 与 Agent 相同的 DeepSeek / OpenAI 兼容 Key（「AI能力 → 模型管理」默认模型，或 `DEEPSEEK_API_KEY`）
+3. 已导入含 Demo8/9/10 的 [sql/ry-vue.sql](../sql/ry-vue.sql)
 
 ## 模块
 
@@ -116,7 +116,7 @@ THEN(lc4jRagPrepare, lc4jRag, lc4jRagNotify)
 - `kb/after-sales-exchange.md` 换货
 - `kb/after-sales-shipping.md` 运费时效
 
-试跑（已有库执行 [sql/phase5_rag.sql](../sql/phase5_rag.sql)）：
+试跑：
 
 ```http
 POST /liteflow/execute/lc4jRagDemo

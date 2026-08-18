@@ -276,10 +276,7 @@
         <module>ruoyi-vue-liteflow-liteflow</module>
         <module>ruoyi-vue-liteflow-agent</module>
         <module>ruoyi-vue-liteflow-langchain</module>
-        <module>ruoyi-vue-liteflow-ai-kit-core</module>
-        <module>ruoyi-vue-liteflow-ai-kit-mcp</module>
-        <module>ruoyi-vue-liteflow-ai-kit-boot</module>
-        <module>ruoyi-vue-liteflow-ai-kit-platform</module>
+        <module>ai-kit</module>
     </modules>
     <packaging>pom</packaging>
 

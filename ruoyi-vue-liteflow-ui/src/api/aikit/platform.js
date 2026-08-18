@@ -1,4 +1,5 @@
 import request from '@/utils/request'
+import { getToken } from '@/utils/auth'
 
 export function listAiModel(query) {
   return request({ url: '/aikit/model/list', method: 'get', params: query })
@@ -22,6 +23,10 @@ export function delAiModel(id) {
 
 export function testAiModel(data) {
   return request({ url: '/aikit/model/test', method: 'post', data })
+}
+
+export function getAiModelSources() {
+  return request({ url: '/aikit/model/sources', method: 'get' })
 }
 
 export function listAiTool(query) {
@@ -64,8 +69,74 @@ export function delAiAgent(id) {
   return request({ url: '/aikit/agent/' + id, method: 'delete' })
 }
 
+export function listAiAgentLogs(agentCode, query) {
+  return request({ url: '/aikit/agent/' + encodeURIComponent(agentCode) + '/logs', method: 'get', params: query })
+}
+
 export function runAiAgent(agentCode, data) {
-  return request({ url: '/aikit/agent/' + agentCode + '/run', method: 'post', data })
+  return request({ url: '/aikit/agent/' + agentCode + '/run', method: 'post', data, timeout: 120000 })
+}
+
+/**
+ * 流式试跑。事件：delta / tool / done / error
+ */
+export function streamAiAgent(agentCode, data, { onEvent, onDone, onError } = {}) {
+  const baseURL = process.env.VUE_APP_BASE_API || ''
+  const controller = new AbortController()
+  const done = fetch(baseURL + '/aikit/agent/' + encodeURIComponent(agentCode) + '/stream', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: 'Bearer ' + getToken()
+    },
+    body: JSON.stringify(data || {}),
+    signal: controller.signal
+  }).then(async res => {
+    if (!res.ok) {
+      const text = await res.text()
+      throw new Error(text || ('HTTP ' + res.status))
+    }
+    const reader = res.body.getReader()
+    const decoder = new TextDecoder('utf-8')
+    let buffer = ''
+    while (true) {
+      if (controller.signal.aborted) {
+        try { reader.cancel() } catch (e) { /* ignore */ }
+        break
+      }
+      const { done: streamDone, value } = await reader.read()
+      if (streamDone) break
+      buffer += decoder.decode(value, { stream: true })
+      const parts = buffer.split('\n\n')
+      buffer = parts.pop() || ''
+      for (const part of parts) {
+        const lines = part.split('\n')
+        let eventName = 'message'
+        const dataLines = []
+        for (const line of lines) {
+          if (line.startsWith('event:')) eventName = line.slice(6).trim()
+          else if (line.startsWith('data:')) dataLines.push(line.slice(5).trim())
+        }
+        if (!dataLines.length) continue
+        let payload
+        try { payload = JSON.parse(dataLines.join('\n')) } catch (e) { payload = dataLines.join('\n') }
+        if (eventName === 'done') onDone && onDone(payload)
+        else if (eventName === 'error') onError && onError(payload)
+        else onEvent && onEvent({ type: eventName, payload })
+      }
+    }
+  }).catch(err => {
+    if (err && (err.name === 'AbortError' || controller.signal.aborted)) {
+      return { aborted: true }
+    }
+    onError && onError({ message: err.message || String(err) })
+    return Promise.reject(err)
+  })
+  return { abort: () => controller.abort(), done }
+}
+
+export function searchAiKnowledge(kbCode, data) {
+  return request({ url: '/aikit/knowledge/' + encodeURIComponent(kbCode) + '/search', method: 'post', data })
 }
 
 export function listAiKnowledge(query) {
@@ -131,6 +202,10 @@ export function delAiSkill(id) {
   return request({ url: '/aikit/skill/' + id, method: 'delete' })
 }
 
+export function runAiSkill(skillCode, data) {
+  return request({ url: '/aikit/skill/' + encodeURIComponent(skillCode) + '/run', method: 'post', data, timeout: 60000 })
+}
+
 export function listAiMemory(query) {
   return request({ url: '/aikit/memory/list', method: 'get', params: query })
 }
@@ -141,6 +216,14 @@ export function addAiMemory(data) {
 
 export function delAiMemory(id) {
   return request({ url: '/aikit/memory/' + id, method: 'delete' })
+}
+
+export function clearAiMemory(data) {
+  return request({ url: '/aikit/memory/clear', method: 'post', data })
+}
+
+export function purgeAiMemory(days) {
+  return request({ url: '/aikit/memory/purge', method: 'post', params: { days } })
 }
 
 export function listAiContext(query) {

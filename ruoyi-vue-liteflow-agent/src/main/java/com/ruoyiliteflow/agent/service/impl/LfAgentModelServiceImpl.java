@@ -59,6 +59,25 @@ public class LfAgentModelServiceImpl implements ILfAgentModelService
     }
 
     @Override
+    public LfAgentModel resolveRuntimeByCode(String modelCode)
+    {
+        if (StringUtils.isEmpty(modelCode))
+        {
+            return resolveRuntimeDefault();
+        }
+        LfAgentModel model = lfAgentModelMapper.selectLfAgentModelByCode(modelCode);
+        if (model == null || !"0".equals(model.getStatus()))
+        {
+            return null;
+        }
+        if (StringUtils.isNotEmpty(model.getApiKeyEnc()))
+        {
+            model.setApiKey(AesEncryptUtils.decrypt(model.getApiKeyEnc(), cryptoSecret));
+        }
+        return model;
+    }
+
+    @Override
     @Transactional(rollbackFor = Exception.class)
     public int insertLfAgentModel(LfAgentModel model)
     {

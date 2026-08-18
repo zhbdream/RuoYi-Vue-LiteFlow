@@ -31,6 +31,7 @@
       <el-table-column label="编码" prop="policyCode" min-width="120" />
       <el-table-column label="名称" prop="policyName" min-width="120" />
       <el-table-column label="窗口" prop="windowSize" width="80" />
+      <el-table-column label="Token预算" prop="tokenBudget" width="100" />
       <el-table-column label="摘要" prop="enableSummary" width="80" align="center">
         <template slot-scope="scope">
           <el-tag :type="scope.row.enableSummary === '1' ? 'success' : 'info'" size="mini">{{ scope.row.enableSummary === '1' ? '是' : '否' }}</el-tag>
@@ -66,6 +67,10 @@
         </el-form-item>
         <el-form-item label="记忆窗口">
           <el-input-number v-model="form.windowSize" :min="1" :max="100" controls-position="right" style="width:100%" />
+        </el-form-item>
+        <el-form-item label="Token 预算">
+          <el-input-number v-model="form.tokenBudget" :min="0" :max="128000" controls-position="right" style="width:100%" />
+          <div style="color:#909399;font-size:12px">0=只按条数窗口；>0 时按约 2 字/token 从旧到新裁剪，优先保留 summary</div>
         </el-form-item>
         <el-form-item label="超窗摘要">
           <el-radio-group v-model="form.enableSummary">
@@ -148,7 +153,7 @@ export default {
     },
     reset() {
       this.form = {
-        id: undefined, policyCode: undefined, policyName: undefined, windowSize: 8,
+        id: undefined, policyCode: undefined, policyName: undefined, windowSize: 8, tokenBudget: 0,
         enableSummary: '1', variableTemplate: '调用方={{principal}}', isDefault: '0', enabled: '1', remark: undefined
       }
       this.resetForm('form')

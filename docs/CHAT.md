@@ -1,6 +1,6 @@
 # 内部 AI 助手（Phase 6）
 
-后台轻量多轮对话：复用「模型配置」默认模型（DeepSeek / OpenAI 兼容）与 Agent 日配额，支持 SSE 流式输出、会话历史、侧栏折叠与停止生成。
+后台轻量多轮对话：复用「AI能力 → 模型管理」默认模型（DeepSeek / OpenAI 兼容）与 Agent 日配额，支持 SSE 流式输出、会话历史、侧栏折叠与停止生成。
 
 <p align="center">
   <img src="img/AI助手.png" alt="AI助手" width="820" />
@@ -10,8 +10,8 @@
 
 ## 前置条件
 
-1. 已配置默认模型 Key（**LiteFlow编排 → 模型配置**），或环境变量 `DEEPSEEK_API_KEY`
-2. 已有库执行增量 SQL：[sql/phase6_chat.sql](../sql/phase6_chat.sql)；全新安装使用含 `lf_chat_*` 与菜单 2010 的 [sql/ry-vue.sql](../sql/ry-vue.sql)
+1. 已配置默认模型 Key（**AI能力 → 模型管理**），或环境变量 `DEEPSEEK_API_KEY`
+2. 已导入全量脚本 [sql/ry-vue.sql](../sql/ry-vue.sql)（含 `lf_chat_*`、AI Kit 表，AI助手在 **AI能力** 下）
 3. 重新登录（或清菜单缓存）以加载权限
 
 ## 功能
@@ -19,7 +19,8 @@
 | 能力 | 说明 |
 |------|------|
 | 会话列表 | 仅本人可见，软删除；支持侧栏折叠（localStorage） |
-| 多轮上下文 | 最近 N 条（默认 20）拼进 Prompt |
+| 选择器 | 新对话可选 **智能体** 或 **模型**；发出后本会话锁定 |
+| 多轮上下文 | 轻量模式：最近 N 条拼进 Prompt；智能体模式：走 Kit 记忆 |
 | SSE 流式 | `delta` 增量 / `done` 完成 / `error` 失败；可中途停止 |
 | Markdown | 轻量渲染标题 / 加粗 / 列表 / 代码块 |
 | 配额 | 走 `IAgentQuotaService`，虚拟链路名 `aiChat` |
@@ -33,15 +34,17 @@
 | `liteflow:chat:send` | 新建会话 / 发送 |
 | `liteflow:chat:remove` | 删除会话 |
 
-路径：`LiteFlow编排 → AI助手` → 组件 `liteflow/chat/index`
+路径：`AI能力 → AI助手` → 组件 `liteflow/chat/index`（接口仍为 `/liteflow/chat`）
 
 ## 快速体验
 
-1. **LiteFlow编排 → 模型配置**：新增 DeepSeek 模型并设为默认  
-2. **LiteFlow编排 → AI助手**：新建对话，例如「这个系统有哪些功能」  
+1. **AI能力 → 模型管理**：新增 DeepSeek 模型并设为默认  
+2. **AI能力 → AI助手**：新建对话，例如「这个系统有哪些功能」  
 3. 观察流式输出与会话列表自动标题
 
 相关截图：[模型配置1.png](img/模型配置1.png) · [模型配置2.png](img/模型配置2.png)
+
+若侧栏仍见旧「LiteFlow编排 → 模型配置 / AI助手」，重新导入 [sql/ry-vue.sql](../sql/ry-vue.sql) 后重新登录。
 
 ## API
 
@@ -55,10 +58,14 @@ POST /liteflow/chat/stream
 Content-Type: application/json
 Accept: text/event-stream
 
-{ "sessionId": 1, "content": "LiteFlow THEN 和 WHEN 有什么区别？" }
+{ "sessionId": 1, "content": "LiteFlow THEN 和 WHEN 有什么区别？", "modelCode": "deepseek-default", "agentCode": "" }
 ```
 
-`sessionId` 可省略，服务端自动建会话。
+`sessionId` 可省略，服务端自动建会话。`agentCode` 与 `modelCode` 二选一：智能体走 Kit（工具/知识库/技能），模型走轻量对话；空则用默认模型。
+
+`GET /liteflow/chat/options` 返回可选模型与已启用智能体。
+
+会话表含 `agent_code`（全量脚本已包含）。
 
 ## 配置
 

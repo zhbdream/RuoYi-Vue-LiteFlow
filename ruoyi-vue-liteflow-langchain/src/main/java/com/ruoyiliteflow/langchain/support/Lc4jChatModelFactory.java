@@ -13,7 +13,7 @@ import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
 
 /**
- * 从「模型配置」或 yml/环境变量组装 OpenAI 兼容 {@link ChatModel}（DeepSeek 等）
+ * 从「AI能力 → 模型管理」或 yml/环境变量组装 OpenAI 兼容 {@link ChatModel}（DeepSeek 等）
  */
 @Component
 public class Lc4jChatModelFactory
@@ -49,7 +49,15 @@ public class Lc4jChatModelFactory
 
     public StreamingChatModel createStreamingChatModel(double temperature)
     {
-        Lc4jModelCredential cred = resolveCredential();
+        return createStreamingChatModel(temperature, resolveCredential());
+    }
+
+    public StreamingChatModel createStreamingChatModel(double temperature, Lc4jModelCredential cred)
+    {
+        if (cred == null)
+        {
+            throw new ServiceException("未配置 LLM API Key：请在「AI能力 → 模型管理」新增模型，或设置环境变量 DEEPSEEK_API_KEY");
+        }
         return OpenAiStreamingChatModel.builder()
                 .apiKey(cred.getApiKey())
                 .baseUrl(cred.getBaseUrl())
@@ -60,22 +68,37 @@ public class Lc4jChatModelFactory
 
     public Lc4jModelCredential resolveCredential()
     {
+        return resolveCredential(null);
+    }
+
+    public Lc4jModelCredential resolveCredential(String modelCode)
+    {
+        if (StringUtils.isNotEmpty(modelCode))
+        {
+            LfAgentModel model = lfAgentModelService.resolveRuntimeByCode(modelCode);
+            if (model == null || StringUtils.isEmpty(model.getApiKey()))
+            {
+                throw new ServiceException("模型不存在、已停用或未配置 Key：" + modelCode);
+            }
+            return toCredential(model);
+        }
         LfAgentModel model = lfAgentModelService.resolveRuntimeDefault();
         if (model != null && StringUtils.isNotEmpty(model.getApiKey()))
         {
-            String baseUrl = StringUtils.isNotEmpty(model.getBaseUrl())
-                    ? model.getBaseUrl()
-                    : ymlBaseUrl;
-            String modelName = StringUtils.isNotEmpty(model.getModel())
-                    ? model.getModel()
-                    : ymlModel;
-            return new Lc4jModelCredential(model.getApiKey(), baseUrl, modelName);
+            return toCredential(model);
         }
         if (StringUtils.isEmpty(ymlApiKey))
         {
             throw new ServiceException(
-                    "未配置 LLM API Key：请在「模型配置」页新增默认模型，或设置环境变量 DEEPSEEK_API_KEY");
+                    "未配置 LLM API Key：请在「AI能力 → 模型管理」新增默认模型，或设置环境变量 DEEPSEEK_API_KEY");
         }
         return new Lc4jModelCredential(ymlApiKey, ymlBaseUrl, ymlModel);
+    }
+
+    private Lc4jModelCredential toCredential(LfAgentModel model)
+    {
+        String baseUrl = StringUtils.isNotEmpty(model.getBaseUrl()) ? model.getBaseUrl() : ymlBaseUrl;
+        String modelName = StringUtils.isNotEmpty(model.getModel()) ? model.getModel() : ymlModel;
+        return new Lc4jModelCredential(model.getApiKey(), baseUrl, modelName);
     }
 }

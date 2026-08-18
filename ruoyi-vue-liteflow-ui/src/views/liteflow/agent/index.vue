@@ -1,6 +1,13 @@
 <template>
   <div class="app-container">
     <el-alert
+      title="本页已合并到「AI能力 → 模型管理」，请到新入口维护 Key 与日配额。此处仅兼容旧地址。"
+      type="warning"
+      :closable="false"
+      show-icon
+      class="mb8"
+    />
+    <el-alert
       title="API Key 仅写入时提交，入库 AES 加密；列表不回传明文。设为默认后，riskAgent 优先使用该配置（覆盖空的 yml）。"
       type="info"
       :closable="false"

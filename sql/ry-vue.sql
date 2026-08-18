@@ -11,11 +11,341 @@
  Target Server Version : 80046 (8.0.46)
  File Encoding         : 65001
 
- Date: 03/07/2026 16:59:23
+ Date: 18/08/2026 22:31:39
 */
+
+-- 全量初始化（若依 + LiteFlow + AI Kit）。全新安装只需本文件。
 
 SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS = 0;
+
+-- ----------------------------
+-- Table structure for ai_agent
+-- ----------------------------
+DROP TABLE IF EXISTS `ai_agent`;
+CREATE TABLE `ai_agent`  (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键',
+  `agent_code` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '智能体编码',
+  `agent_name` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '名称',
+  `system_prompt` text CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL COMMENT '系统提示词',
+  `model_id` bigint NULL DEFAULT NULL COMMENT '绑定模型 ai_model.id',
+  `temperature` decimal(3, 2) NULL DEFAULT 0.30 COMMENT '温度',
+  `context_policy_id` bigint NULL DEFAULT NULL COMMENT '上下文策略',
+  `enabled` char(1) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '1' COMMENT '0停用 1启用',
+  `create_by` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT '',
+  `create_time` datetime NULL DEFAULT NULL,
+  `update_by` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT '',
+  `update_time` datetime NULL DEFAULT NULL,
+  `remark` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  PRIMARY KEY (`id`) USING BTREE,
+  UNIQUE INDEX `uk_ai_agent_code`(`agent_code` ASC) USING BTREE,
+  INDEX `idx_ai_agent_model`(`model_id` ASC) USING BTREE
+) ENGINE = InnoDB AUTO_INCREMENT = 5 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = 'AI Kit 智能体' ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Records of ai_agent
+-- ----------------------------
+INSERT INTO `ai_agent` VALUES (1, 'chat', '通用对话', '你是内部助手，回答简洁、准确，使用中文。', NULL, 0.30, 1, '1', 'system', '2026-08-04 22:46:31', '', NULL, '种子');
+INSERT INTO `ai_agent` VALUES (2, 'risk', '风控分析', '你是风控分析助手。根据用户描述评估风险等级（低/中/高）并给出理由，使用中文。', NULL, 0.20, NULL, '1', 'system', '2026-08-04 22:46:31', '', NULL, '种子');
+INSERT INTO `ai_agent` VALUES (3, 'rag', '知识问答', '你是知识问答助手。请优先依据【参考资料】回答售后/政策类问题；资料不足时明确说明，使用中文。', NULL, 0.20, 1, '1', 'system', '2026-08-04 22:46:31', '', NULL, '种子');
+INSERT INTO `ai_agent` VALUES (4, 'ops', '运维助手', '你是编排中台运维助手。根据用户问题给出可操作的排查建议，不要编造不存在的链路，使用中文。', NULL, 0.30, NULL, '1', 'system', '2026-08-04 22:46:31', '', NULL, '种子');
+
+-- ----------------------------
+-- Table structure for ai_agent_knowledge
+-- ----------------------------
+DROP TABLE IF EXISTS `ai_agent_knowledge`;
+CREATE TABLE `ai_agent_knowledge`  (
+  `agent_id` bigint NOT NULL,
+  `kb_id` bigint NOT NULL,
+  `sort` int NULL DEFAULT 0,
+  PRIMARY KEY (`agent_id`, `kb_id`) USING BTREE
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '智能体-知识库关联（Phase B）' ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Records of ai_agent_knowledge
+-- ----------------------------
+INSERT INTO `ai_agent_knowledge` VALUES (3, 1, 0);
+
+-- ----------------------------
+-- Table structure for ai_agent_run_log
+-- ----------------------------
+DROP TABLE IF EXISTS `ai_agent_run_log`;
+CREATE TABLE `ai_agent_run_log`  (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `agent_code` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
+  `session_id` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT 'default',
+  `principal` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT 'anonymous',
+  `model` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  `cost_ms` int NULL DEFAULT NULL,
+  `kb_hit` char(1) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '0' COMMENT '1命中知识库',
+  `tool_hit` char(1) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '0' COMMENT '1调用了工具',
+  `tool_trace` mediumtext CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL COMMENT '工具/技能轨迹 JSON',
+  `error_msg` varchar(1000) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  `user_message` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  `create_time` datetime NULL DEFAULT NULL,
+  PRIMARY KEY (`id`) USING BTREE,
+  INDEX `idx_ai_run_agent`(`agent_code` ASC, `id` ASC) USING BTREE
+) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = 'AI Kit 调用日志' ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Records of ai_agent_run_log
+-- ----------------------------
+
+-- ----------------------------
+-- Table structure for ai_agent_skill
+-- ----------------------------
+DROP TABLE IF EXISTS `ai_agent_skill`;
+CREATE TABLE `ai_agent_skill`  (
+  `agent_id` bigint NOT NULL,
+  `skill_id` bigint NOT NULL,
+  `sort` int NULL DEFAULT 0,
+  PRIMARY KEY (`agent_id`, `skill_id`) USING BTREE
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '智能体-技能关联' ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Records of ai_agent_skill
+-- ----------------------------
+INSERT INTO `ai_agent_skill` VALUES (1, 1, 0);
+INSERT INTO `ai_agent_skill` VALUES (3, 2, 0);
+
+-- ----------------------------
+-- Table structure for ai_agent_tool
+-- ----------------------------
+DROP TABLE IF EXISTS `ai_agent_tool`;
+CREATE TABLE `ai_agent_tool`  (
+  `agent_id` bigint NOT NULL,
+  `tool_id` bigint NOT NULL,
+  `sort` int NULL DEFAULT 0,
+  PRIMARY KEY (`agent_id`, `tool_id`) USING BTREE
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '智能体-工具关联' ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Records of ai_agent_tool
+-- ----------------------------
+INSERT INTO `ai_agent_tool` VALUES (1, 1, 0);
+INSERT INTO `ai_agent_tool` VALUES (1, 6, 0);
+INSERT INTO `ai_agent_tool` VALUES (2, 2, 0);
+INSERT INTO `ai_agent_tool` VALUES (3, 3, 0);
+INSERT INTO `ai_agent_tool` VALUES (4, 1, 2);
+INSERT INTO `ai_agent_tool` VALUES (4, 4, 0);
+INSERT INTO `ai_agent_tool` VALUES (4, 5, 1);
+
+-- ----------------------------
+-- Table structure for ai_context_policy
+-- ----------------------------
+DROP TABLE IF EXISTS `ai_context_policy`;
+CREATE TABLE `ai_context_policy`  (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `policy_code` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
+  `policy_name` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  `window_size` int NOT NULL DEFAULT 10 COMMENT '记忆窗口条数',
+  `enable_summary` char(1) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '0' COMMENT '超窗是否写摘要',
+  `variable_template` varchar(512) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '变量模板，如 用户={{principal}}',
+  `token_budget` int NOT NULL DEFAULT 0 COMMENT '记忆 token 预算，0=仅按条数',
+  `is_default` char(1) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '0',
+  `enabled` char(1) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '1',
+  `create_by` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT '',
+  `create_time` datetime NULL DEFAULT NULL,
+  `update_by` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT '',
+  `update_time` datetime NULL DEFAULT NULL,
+  `remark` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  PRIMARY KEY (`id`) USING BTREE,
+  UNIQUE INDEX `uk_ai_ctx_policy`(`policy_code` ASC) USING BTREE
+) ENGINE = InnoDB AUTO_INCREMENT = 2 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = 'AI Kit 上下文策略' ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Records of ai_context_policy
+-- ----------------------------
+INSERT INTO `ai_context_policy` VALUES (1, 'default', '默认策略', 8, '1', '调用方={{principal}}', 0, '1', '1', 'system', '2026-08-04 23:27:01', '', NULL, 'Phase C');
+
+-- ----------------------------
+-- Table structure for ai_knowledge_base
+-- ----------------------------
+DROP TABLE IF EXISTS `ai_knowledge_base`;
+CREATE TABLE `ai_knowledge_base`  (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键',
+  `kb_code` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '知识库编码',
+  `kb_name` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '名称',
+  `description` varchar(512) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '描述',
+  `status` char(1) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '0' COMMENT '0正常 1停用',
+  `chunk_count` int NULL DEFAULT 0 COMMENT '分片数',
+  `create_by` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT '',
+  `create_time` datetime NULL DEFAULT NULL,
+  `update_by` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT '',
+  `update_time` datetime NULL DEFAULT NULL,
+  `remark` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  PRIMARY KEY (`id`) USING BTREE,
+  UNIQUE INDEX `uk_ai_kb_code`(`kb_code` ASC) USING BTREE
+) ENGINE = InnoDB AUTO_INCREMENT = 2 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = 'AI Kit 知识库' ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Records of ai_knowledge_base
+-- ----------------------------
+INSERT INTO `ai_knowledge_base` VALUES (1, 'after-sales', '售后政策', '退货/换货/物流示例知识库', '0', 3, 'system', '2026-08-04 23:08:33', '', '2026-08-04 23:11:49', 'Phase B 种子');
+
+-- ----------------------------
+-- Table structure for ai_knowledge_chunk
+-- ----------------------------
+DROP TABLE IF EXISTS `ai_knowledge_chunk`;
+CREATE TABLE `ai_knowledge_chunk`  (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键',
+  `kb_id` bigint NOT NULL COMMENT '知识库ID',
+  `doc_id` bigint NOT NULL COMMENT '文档ID',
+  `chunk_index` int NOT NULL DEFAULT 0 COMMENT '分片序号',
+  `content` text CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '分片文本',
+  `create_time` datetime NULL DEFAULT NULL,
+  PRIMARY KEY (`id`) USING BTREE,
+  INDEX `idx_ai_chunk_kb`(`kb_id` ASC) USING BTREE,
+  INDEX `idx_ai_chunk_doc`(`doc_id` ASC) USING BTREE
+) ENGINE = InnoDB AUTO_INCREMENT = 7 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = 'AI Kit 知识库分片' ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Records of ai_knowledge_chunk
+-- ----------------------------
+INSERT INTO `ai_knowledge_chunk` VALUES (4, 1, 3, 0, '## 物流时效\r\n1. 现货订单 48 小时内发货。\r\n2. 偏远地区可能延迟 2-3 天。\r\n3. 物流异常可在订单页申请催促或改址（未出库前）。', '2026-08-04 23:11:49');
+INSERT INTO `ai_knowledge_chunk` VALUES (5, 1, 2, 0, '## 换货政策\r\n1. 商品存在质量问题或错发，签收后 15 天内可换货。\r\n2. 换货需保持原包装与配件齐全。\r\n3. 同价换货免运费；补差价换货按差价支付。', '2026-08-04 23:11:49');
+INSERT INTO `ai_knowledge_chunk` VALUES (6, 1, 1, 0, '## 退货政策\r\n1. 签收后 7 天内，商品未使用且包装完好，可申请无理由退货。\r\n2. 食品、贴身衣物、定制商品不支持无理由退货。\r\n3. 退货运费：质量问题商家承担；无理由退货买家承担。\r\n4. 退款在仓库验收通过后 3 个工作日内原路退回。', '2026-08-04 23:11:49');
+
+-- ----------------------------
+-- Table structure for ai_knowledge_doc
+-- ----------------------------
+DROP TABLE IF EXISTS `ai_knowledge_doc`;
+CREATE TABLE `ai_knowledge_doc`  (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键',
+  `kb_id` bigint NOT NULL COMMENT '知识库ID',
+  `doc_name` varchar(256) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '文档名',
+  `file_path` varchar(512) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '存储路径',
+  `content_text` mediumtext CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL COMMENT '原文（txt/md）',
+  `status` char(1) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '0' COMMENT '0待索引 1已索引 2失败',
+  `chunk_count` int NULL DEFAULT 0,
+  `create_by` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT '',
+  `create_time` datetime NULL DEFAULT NULL,
+  `update_by` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT '',
+  `update_time` datetime NULL DEFAULT NULL,
+  `remark` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  PRIMARY KEY (`id`) USING BTREE,
+  INDEX `idx_ai_doc_kb`(`kb_id` ASC) USING BTREE
+) ENGINE = InnoDB AUTO_INCREMENT = 4 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = 'AI Kit 知识库文档' ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Records of ai_knowledge_doc
+-- ----------------------------
+INSERT INTO `ai_knowledge_doc` VALUES (1, 1, 'after-sales-return.md', NULL, '## 退货政策\r\n1. 签收后 7 天内，商品未使用且包装完好，可申请无理由退货。\r\n2. 食品、贴身衣物、定制商品不支持无理由退货。\r\n3. 退货运费：质量问题商家承担；无理由退货买家承担。\r\n4. 退款在仓库验收通过后 3 个工作日内原路退回。', '1', 1, 'system', '2026-08-04 23:08:33', '', '2026-08-04 23:11:49', '种子文档');
+INSERT INTO `ai_knowledge_doc` VALUES (2, 1, 'after-sales-exchange.md', NULL, '## 换货政策\r\n1. 商品存在质量问题或错发，签收后 15 天内可换货。\r\n2. 换货需保持原包装与配件齐全。\r\n3. 同价换货免运费；补差价换货按差价支付。', '1', 1, 'system', '2026-08-04 23:08:33', '', '2026-08-04 23:11:49', '种子文档');
+INSERT INTO `ai_knowledge_doc` VALUES (3, 1, 'after-sales-shipping.md', NULL, '## 物流时效\r\n1. 现货订单 48 小时内发货。\r\n2. 偏远地区可能延迟 2-3 天。\r\n3. 物流异常可在订单页申请催促或改址（未出库前）。', '1', 1, 'system', '2026-08-04 23:08:33', '', '2026-08-04 23:11:49', '种子文档');
+
+-- ----------------------------
+-- Table structure for ai_memory_item
+-- ----------------------------
+DROP TABLE IF EXISTS `ai_memory_item`;
+CREATE TABLE `ai_memory_item`  (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `agent_code` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
+  `session_id` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT 'default',
+  `principal` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT 'anonymous',
+  `memory_type` varchar(16) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT 'turn' COMMENT 'turn|summary|fact',
+  `role` varchar(16) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT 'user|assistant|system',
+  `content` mediumtext CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
+  `create_by` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT '',
+  `create_time` datetime NULL DEFAULT NULL,
+  PRIMARY KEY (`id`) USING BTREE,
+  INDEX `idx_ai_mem_agent_session`(`agent_code` ASC, `session_id` ASC, `id` ASC) USING BTREE
+) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = 'AI Kit 记忆条目' ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Records of ai_memory_item
+-- ----------------------------
+
+-- ----------------------------
+-- Table structure for ai_model
+-- ----------------------------
+DROP TABLE IF EXISTS `ai_model`;
+CREATE TABLE `ai_model`  (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键',
+  `model_code` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '模型编码',
+  `model_name` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '显示名称',
+  `provider` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT 'deepseek' COMMENT '供应商',
+  `base_url` varchar(512) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT 'API Base URL',
+  `model` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT 'deepseek-chat' COMMENT '模型名',
+  `api_key_enc` varchar(512) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT 'AES 加密 API Key',
+  `status` char(1) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '0' COMMENT '0正常 1停用',
+  `is_default` char(1) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '0' COMMENT '是否默认',
+  `daily_call_limit` int NULL DEFAULT NULL COMMENT '单用户日调用上限',
+  `daily_token_limit` int NULL DEFAULT NULL COMMENT '单用户日 Token 上限',
+  `create_by` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT '',
+  `create_time` datetime NULL DEFAULT NULL,
+  `update_by` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT '',
+  `update_time` datetime NULL DEFAULT NULL,
+  `remark` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  PRIMARY KEY (`id`) USING BTREE,
+  UNIQUE INDEX `uk_ai_model_code`(`model_code` ASC) USING BTREE
+) ENGINE = InnoDB AUTO_INCREMENT = 2 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = 'AI Kit 模型配置' ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Records of ai_model
+-- ----------------------------
+INSERT INTO `ai_model` VALUES (1, 'deepseek', NULL, 'deepseek', 'https://api.deepseek.com/v1', 'deepseek-chat', NULL, '0', '1', NULL, NULL, 'admin', '2026-07-15 20:28:34', '', NULL, 'migrated from lf_agent_model');
+
+-- ----------------------------
+-- Table structure for ai_skill
+-- ----------------------------
+DROP TABLE IF EXISTS `ai_skill`;
+CREATE TABLE `ai_skill`  (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `skill_code` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '技能编码',
+  `skill_name` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  `skill_type` varchar(16) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT 'prompt' COMMENT 'prompt|http',
+  `content` mediumtext CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL COMMENT 'prompt 模板或 HTTP URL',
+  `description` varchar(512) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  `enabled` char(1) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '1',
+  `create_by` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT '',
+  `create_time` datetime NULL DEFAULT NULL,
+  `update_by` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT '',
+  `update_time` datetime NULL DEFAULT NULL,
+  `remark` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  PRIMARY KEY (`id`) USING BTREE,
+  UNIQUE INDEX `uk_ai_skill_code`(`skill_code` ASC) USING BTREE
+) ENGINE = InnoDB AUTO_INCREMENT = 4 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = 'AI Kit 技能' ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Records of ai_skill
+-- ----------------------------
+INSERT INTO `ai_skill` VALUES (1, 'concise-zh', '简洁中文', 'prompt', '回答尽量简洁，使用中文，避免空话。', '通用风格技能', '1', 'system', '2026-08-04 23:27:01', '', NULL, 'Phase C');
+INSERT INTO `ai_skill` VALUES (2, 'cite-kb', '引用资料', 'prompt', '若存在【参考资料】或【历史记忆】，回答中简要引用关键点。', 'RAG/记忆增强', '1', 'system', '2026-08-04 23:27:01', '', NULL, 'Phase C');
+INSERT INTO `ai_skill` VALUES (3, 'greet-tpl', '称呼模板', 'prompt', '请称呼用户为 {{principal}}，并围绕「{{message}}」用一句话给出建议。', '参数模板示例：{{principal}} {{message}} {{sessionId}} {{agentCode}}', '1', 'system', '2026-08-18 21:31:25', '', NULL, 'Phase 9 P2');
+
+-- ----------------------------
+-- Table structure for ai_tool
+-- ----------------------------
+DROP TABLE IF EXISTS `ai_tool`;
+CREATE TABLE `ai_tool`  (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键',
+  `tool_code` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '工具编码',
+  `tool_name` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '工具名称',
+  `tool_type` varchar(16) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT 'local' COMMENT 'local|mcp',
+  `description` varchar(512) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '描述',
+  `input_schema_json` text CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL COMMENT 'JSON Schema',
+  `invoke_key` varchar(256) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT 'local=bean/方法键；mcp=tool 名',
+  `mcp_server_key` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '如 ai-core',
+  `enabled` char(1) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '1' COMMENT '0停用 1启用',
+  `create_by` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT '',
+  `create_time` datetime NULL DEFAULT NULL,
+  `update_by` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT '',
+  `update_time` datetime NULL DEFAULT NULL,
+  `remark` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  PRIMARY KEY (`id`) USING BTREE,
+  UNIQUE INDEX `uk_ai_tool_code`(`tool_code` ASC) USING BTREE
+) ENGINE = InnoDB AUTO_INCREMENT = 7 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = 'AI Kit 工具登记' ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Records of ai_tool
+-- ----------------------------
+INSERT INTO `ai_tool` VALUES (1, 'chat_completion', '对话补全', 'mcp', 'MCP chat_completion', NULL, 'chat_completion', 'ai-core', '1', 'system', '2026-08-04 22:46:31', '', NULL, 'Phase A 静态 MCP');
+INSERT INTO `ai_tool` VALUES (2, 'risk_analyze', '风控分析', 'mcp', 'MCP risk_analyze', NULL, 'risk_analyze', 'ai-core', '1', 'system', '2026-08-04 22:46:31', '', NULL, NULL);
+INSERT INTO `ai_tool` VALUES (3, 'rag_ask', '知识问答', 'mcp', 'MCP rag_ask', NULL, 'rag_ask', 'ai-core', '1', 'system', '2026-08-04 22:46:31', '', NULL, NULL);
+INSERT INTO `ai_tool` VALUES (4, 'list_chains', '链路列表', 'mcp', '治理 Demo list_chains', NULL, 'list_chains', 'lf-governance', '1', 'system', '2026-08-04 22:46:31', '', NULL, NULL);
+INSERT INTO `ai_tool` VALUES (5, 'dashboard_summary', '监控摘要', 'mcp', '治理 Demo dashboard_summary', NULL, 'dashboard_summary', 'lf-governance', '1', 'system', '2026-08-04 22:46:31', '', NULL, NULL);
+INSERT INTO `ai_tool` VALUES (6, 'echo_ping', '回声探测', 'mcp', '动态注册示例：原样回显参数', NULL, 'echo', 'ai-core', '1', 'system', '2026-08-04 23:27:01', '', NULL, 'Phase C dynamic');
 
 -- ----------------------------
 -- Table structure for gen_table
@@ -45,7 +375,7 @@ CREATE TABLE `gen_table`  (
   `update_time` datetime NULL DEFAULT NULL COMMENT '更新时间',
   `remark` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '备注',
   PRIMARY KEY (`table_id`) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '代码生成业务表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '代码生成业务表' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of gen_table
@@ -79,11 +409,42 @@ CREATE TABLE `gen_table_column`  (
   `update_by` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT '' COMMENT '更新者',
   `update_time` datetime NULL DEFAULT NULL COMMENT '更新时间',
   PRIMARY KEY (`column_id`) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '代码生成业务表字段' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '代码生成业务表字段' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of gen_table_column
 -- ----------------------------
+
+-- ----------------------------
+-- Table structure for lf_agent_model
+-- ----------------------------
+DROP TABLE IF EXISTS `lf_agent_model`;
+CREATE TABLE `lf_agent_model`  (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键',
+  `model_code` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '模型编码',
+  `model_name` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '显示名称',
+  `provider` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT 'deepseek' COMMENT '供应商',
+  `config_key` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT 'deepseek' COMMENT 'openai-compatible configKey',
+  `base_url` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT 'API Base URL',
+  `model` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT 'deepseek-chat' COMMENT '模型名',
+  `api_key_enc` varchar(512) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT 'AES 加密 API Key',
+  `status` char(1) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '0' COMMENT '0正常 1停用',
+  `is_default` char(1) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '0' COMMENT '是否默认',
+  `daily_call_limit` int NULL DEFAULT NULL COMMENT '单用户日调用上限',
+  `daily_token_limit` int NULL DEFAULT NULL COMMENT '单用户日 Token 上限',
+  `create_by` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT '',
+  `create_time` datetime NULL DEFAULT NULL,
+  `update_by` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT '',
+  `update_time` datetime NULL DEFAULT NULL,
+  `remark` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  PRIMARY KEY (`id`) USING BTREE,
+  UNIQUE INDEX `uk_model_code`(`model_code` ASC) USING BTREE
+) ENGINE = InnoDB AUTO_INCREMENT = 2 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = 'LiteFlow Agent 模型配置' ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Records of lf_agent_model
+-- ----------------------------
+INSERT INTO `lf_agent_model` VALUES (1, 'deepseek', NULL, 'deepseek', 'deepseek', 'https://api.deepseek.com/v1', 'deepseek-chat', NULL, '0', '1', NULL, NULL, 'admin', '2026-07-15 20:28:34', '', NULL, NULL);
 
 -- ----------------------------
 -- Table structure for lf_chain
@@ -111,7 +472,7 @@ CREATE TABLE `lf_chain`  (
   `remark` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '备注',
   PRIMARY KEY (`id`) USING BTREE,
   UNIQUE INDEX `uk_app_chain`(`application_name` ASC, `chain_name` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 14 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = 'LiteFlow链路表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 15 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = 'LiteFlow链路表' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of lf_chain
@@ -124,11 +485,12 @@ INSERT INTO `lf_chain` VALUES (5, 'ruoyi-liteflow', 'resilientNotify', '容错�
 INSERT INTO `lf_chain` VALUES (6, 'ruoyi-liteflow', 'batchProcess', '批量处理 Demo6', 'THEN(initBatch, FOR(batchCount).DO(processOrderItem), summarizeBatch);', NULL, 1, '0', '0', 1, 'com.ruoyiliteflow.liteflow.domain.context.BatchContext', NULL, NULL, NULL, 'admin', '2026-07-03 13:34:56', '', NULL, 'Demo6');
 INSERT INTO `lf_chain` VALUES (7, 'ruoyi-liteflow', 'newCustomerPromo', '新客促销（决策路由）', 'THEN(newCustomerWelcome, newCustomerDiscount);', NULL, 1, '0', '0', 1, 'com.ruoyiliteflow.liteflow.domain.context.RouteUserContext', 'isNewCustomer', 'routeDemo', NULL, 'admin', '2026-07-03 16:28:43', '', NULL, 'Demo5 route');
 INSERT INTO `lf_chain` VALUES (8, 'ruoyi-liteflow', 'returningCustomerPromo', '老客复购（决策路由）', 'THEN(returningCustomerWelcome, returningCustomerRepurchase);', NULL, 1, '0', '0', 1, 'com.ruoyiliteflow.liteflow.domain.context.RouteUserContext', 'isReturningCustomer', 'routeDemo', NULL, 'admin', '2026-07-03 16:28:43', '', NULL, 'Demo5 route');
-INSERT INTO `lf_chain` VALUES (9, 'ruoyi-liteflow', 'fallbackDemo', '声明式+降级组件 Demo', 'THEN(declareHello, node("ghostNode"), declareBye);', NULL, 1, '0', '0', 1, NULL, NULL, NULL, NULL, 'admin', '2026-07-14 14:00:00', '', NULL, 'Phase3 FallbackCmp');
+INSERT INTO `lf_chain` VALUES (9, 'ruoyi-liteflow', 'fallbackDemo', '声明式+降级组件 Demo', 'THEN(declareHello, node(\"ghostNode\"), declareBye);', NULL, 1, '0', '0', 1, NULL, NULL, NULL, NULL, 'admin', '2026-07-14 14:00:00', '', NULL, 'Phase3 FallbackCmp');
 INSERT INTO `lf_chain` VALUES (10, 'ruoyi-liteflow', 'agentRiskDemo', 'Demo7 DeepSeek 风控 Agent', 'THEN(agentPrepare, riskAgent, agentNotify);', NULL, 1, '0', '0', 1, 'com.ruoyiliteflow.agent.domain.AgentRiskContext', NULL, NULL, NULL, 'admin', '2026-07-14 15:00:00', '', NULL, 'Phase4 ReAct Agent');
 INSERT INTO `lf_chain` VALUES (11, 'ruoyi-liteflow', 'lc4jChatDemo', 'Demo8 LangChain4j Chat+Tool 风控', 'THEN(lc4jPrepare, lc4jChat, lc4jNotify);', NULL, 1, '0', '0', 1, 'com.ruoyiliteflow.langchain.domain.Lc4jRiskContext', NULL, NULL, NULL, 'admin', '2026-07-15 20:00:00', '', NULL, 'Phase5 LangChain4j');
 INSERT INTO `lf_chain` VALUES (12, 'ruoyi-liteflow', 'lc4jGraphDemo', 'Demo9 LangGraph4j 状态图风控', 'THEN(lc4jPrepare, lc4jGraph, lc4jNotify);', NULL, 1, '0', '0', 1, 'com.ruoyiliteflow.langchain.domain.Lc4jRiskContext', NULL, NULL, NULL, 'admin', '2026-07-15 20:00:00', '', NULL, 'Phase5 LangGraph4j');
-INSERT INTO `lf_chain` VALUES (13, 'ruoyi-liteflow', 'lc4jRagDemo', 'Demo10 LangChain4j RAG 售后问答', 'THEN(lc4jRagPrepare, lc4jRag, lc4jRagNotify);', NULL, 1, '0', '0', 1, 'com.ruoyiliteflow.langchain.domain.Lc4jRagContext', NULL, NULL, NULL, 'admin', '2026-07-15 21:00:00', '', NULL, 'Phase5 LangChain4j RAG');
+INSERT INTO `lf_chain` VALUES (13, 'ruoyi-liteflow', 'lc4jRagDemo', 'Demo10 LangChain4j RAG 售后问答', 'THEN(lc4jRagPrepare, lc4jRag, lc4jRagNotify);', NULL, 1, '0', '0', 1, 'com.ruoyiliteflow.langchain.domain.Lc4jRagContext', NULL, NULL, NULL, 'admin', '2026-07-15 22:00:25', '', NULL, 'Phase5 LangChain4j RAG');
+INSERT INTO `lf_chain` VALUES (14, 'ruoyi-liteflow', 'aiKitAgentDemo', 'Demo11 AI Kit 配置驱动 Agent', 'THEN(aiKitAgentPrepare, aiKitAgent);', NULL, 1, '0', '0', 1, 'com.ruoyiliteflow.langchain.domain.AiKitAgentContext', NULL, NULL, NULL, 'admin', '2026-08-04 23:08:33', '', NULL, 'Phase B 薄适配');
 
 -- ----------------------------
 -- Table structure for lf_chain_audit
@@ -151,7 +513,7 @@ CREATE TABLE `lf_chain_audit`  (
   INDEX `idx_chain_name`(`chain_name` ASC) USING BTREE,
   INDEX `idx_action_type`(`action_type` ASC) USING BTREE,
   INDEX `idx_create_time`(`create_time` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 3 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = 'LiteFlow链路规则变更审计' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 3 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = 'LiteFlow链路规则变更审计' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of lf_chain_audit
@@ -177,7 +539,7 @@ CREATE TABLE `lf_chain_permission`  (
   UNIQUE INDEX `uk_chain_role`(`chain_name` ASC, `role_id` ASC) USING BTREE,
   INDEX `idx_chain_name`(`chain_name` ASC) USING BTREE,
   INDEX `idx_role_id`(`role_id` ASC) USING BTREE
-) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = 'LiteFlow链路级权限' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = 'LiteFlow链路级权限' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of lf_chain_permission
@@ -200,12 +562,57 @@ CREATE TABLE `lf_chain_version`  (
   PRIMARY KEY (`id`) USING BTREE,
   INDEX `idx_chain_id`(`chain_id` ASC) USING BTREE,
   INDEX `idx_chain_name`(`chain_name` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 2 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = 'LiteFlow链路版本快照' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 2 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = 'LiteFlow链路版本快照' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of lf_chain_version
 -- ----------------------------
 INSERT INTO `lf_chain_version` VALUES (1, 1, 'helloChain', 2, 'THEN(helloA, helloB, helloC);', '{\"lfFlowModel\":{\"type\":\"then\",\"children\":[{\"type\":\"component\",\"nodeId\":\"helloA\",\"name\":\"helloA\",\"remark\":\"\",\"tag\":\"\",\"dataKey\":\"\",\"dataValue\":\"\",\"bind\":\"\",\"_key\":\"root.c0\"},{\"type\":\"component\",\"nodeId\":\"helloB\",\"name\":\"helloB\",\"remark\":\"\",\"tag\":\"\",\"dataKey\":\"\",\"dataValue\":\"\",\"bind\":\"\",\"_key\":\"root.c1\"},{\"type\":\"component\",\"nodeId\":\"helloC\",\"name\":\"helloC\",\"remark\":\"\",\"tag\":\"\",\"dataKey\":\"\",\"dataValue\":\"\",\"bind\":\"\",\"_key\":\"root.c2\"}],\"_key\":\"root\"},\"cells\":[{\"position\":{\"x\":260,\"y\":40},\"size\":{\"width\":160,\"height\":48},\"attrs\":{\"text\":{\"text\":\"helloA\"},\"body\":{\"stroke\":\"#409EFF\",\"fill\":\"#ecf5ff\",\"rx\":6,\"ry\":6,\"strokeWidth\":1},\"label\":{\"fill\":\"#303133\",\"fontSize\":13,\"fontWeight\":600}},\"visible\":true,\"shape\":\"rect\",\"id\":\"helloA-1\",\"data\":{\"lfType\":\"component\",\"modelKey\":\"root.c0\",\"nodeId\":\"helloA\",\"name\":\"helloA\",\"remark\":\"\"},\"ports\":{\"groups\":{\"top\":{\"position\":\"top\",\"attrs\":{\"circle\":{\"r\":4,\"magnet\":true,\"stroke\":\"#409EFF\",\"fill\":\"#fff\"}}},\"bottom\":{\"position\":\"bottom\",\"attrs\":{\"circle\":{\"r\":4,\"magnet\":true,\"stroke\":\"#409EFF\",\"fill\":\"#fff\"}}}},\"items\":[{\"id\":\"in\",\"group\":\"top\"},{\"id\":\"out\",\"group\":\"bottom\"}]},\"zIndex\":1},{\"position\":{\"x\":260,\"y\":160},\"size\":{\"width\":160,\"height\":48},\"attrs\":{\"text\":{\"text\":\"helloB\"},\"body\":{\"stroke\":\"#409EFF\",\"fill\":\"#ecf5ff\",\"rx\":6,\"ry\":6,\"strokeWidth\":1},\"label\":{\"fill\":\"#303133\",\"fontSize\":13,\"fontWeight\":600}},\"visible\":true,\"shape\":\"rect\",\"id\":\"helloB-2\",\"data\":{\"lfType\":\"component\",\"modelKey\":\"root.c1\",\"nodeId\":\"helloB\",\"name\":\"helloB\",\"remark\":\"\"},\"ports\":{\"groups\":{\"top\":{\"position\":\"top\",\"attrs\":{\"circle\":{\"r\":4,\"magnet\":true,\"stroke\":\"#409EFF\",\"fill\":\"#fff\"}}},\"bottom\":{\"position\":\"bottom\",\"attrs\":{\"circle\":{\"r\":4,\"magnet\":true,\"stroke\":\"#409EFF\",\"fill\":\"#fff\"}}}},\"items\":[{\"id\":\"in\",\"group\":\"top\"},{\"id\":\"out\",\"group\":\"bottom\"}]},\"zIndex\":2},{\"position\":{\"x\":260,\"y\":290},\"size\":{\"width\":160,\"height\":48},\"attrs\":{\"text\":{\"text\":\"helloC\"},\"body\":{\"stroke\":\"#409EFF\",\"fill\":\"#ecf5ff\",\"rx\":6,\"ry\":6,\"strokeWidth\":1},\"label\":{\"fill\":\"#303133\",\"fontSize\":13,\"fontWeight\":600}},\"visible\":true,\"shape\":\"rect\",\"id\":\"helloC-3\",\"data\":{\"lfType\":\"component\",\"modelKey\":\"root.c2\",\"nodeId\":\"helloC\",\"name\":\"helloC\",\"remark\":\"\"},\"ports\":{\"groups\":{\"top\":{\"position\":\"top\",\"attrs\":{\"circle\":{\"r\":4,\"magnet\":true,\"stroke\":\"#409EFF\",\"fill\":\"#fff\"}}},\"bottom\":{\"position\":\"bottom\",\"attrs\":{\"circle\":{\"r\":4,\"magnet\":true,\"stroke\":\"#409EFF\",\"fill\":\"#fff\"}}}},\"items\":[{\"id\":\"in\",\"group\":\"top\"},{\"id\":\"out\",\"group\":\"bottom\"}]},\"zIndex\":3},{\"shape\":\"edge\",\"attrs\":{\"line\":{\"stroke\":\"#909399\",\"targetMarker\":{\"name\":\"block\",\"width\":8,\"height\":8},\"strokeDasharray\":\"5 5\"}},\"id\":\"567eef4f-2908-49c2-a0ad-570ff1090dba\",\"source\":{\"cell\":\"helloA-1\",\"port\":\"out\"},\"target\":{\"cell\":\"helloB-2\",\"port\":\"in\"},\"zIndex\":4},{\"shape\":\"edge\",\"attrs\":{\"line\":{\"stroke\":\"#909399\",\"targetMarker\":{\"name\":\"block\",\"width\":8,\"height\":8},\"strokeDasharray\":\"5 5\"}},\"id\":\"826fbba4-2843-44f8-aa35-305cc7c7336b\",\"source\":{\"cell\":\"helloB-2\",\"port\":\"out\"},\"target\":{\"cell\":\"helloC-3\",\"port\":\"in\"},\"zIndex\":5}]}', 'admin', '2026-07-03 14:25:47', '发布快照 v2');
+
+-- ----------------------------
+-- Table structure for lf_chat_message
+-- ----------------------------
+DROP TABLE IF EXISTS `lf_chat_message`;
+CREATE TABLE `lf_chat_message`  (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键',
+  `session_id` bigint NOT NULL COMMENT '会话ID',
+  `role` varchar(16) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT 'user/assistant/system',
+  `content` mediumtext CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '消息内容',
+  `token_count` int NULL DEFAULT NULL COMMENT 'Token 用量',
+  `create_by` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT '',
+  `create_time` datetime NULL DEFAULT NULL,
+  PRIMARY KEY (`id`) USING BTREE,
+  INDEX `idx_chat_session`(`session_id` ASC) USING BTREE
+) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = 'AI内部助手消息' ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Records of lf_chat_message
+-- ----------------------------
+
+-- ----------------------------
+-- Table structure for lf_chat_session
+-- ----------------------------
+DROP TABLE IF EXISTS `lf_chat_session`;
+CREATE TABLE `lf_chat_session`  (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键',
+  `title` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '会话标题',
+  `user_name` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '归属用户',
+  `model_code` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '模型标识',
+  `model_name` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '模型名',
+  `agent_code` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '绑定智能体编码，空=轻量模型对话',
+  `status` char(1) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '0' COMMENT '0正常 1删除',
+  `create_by` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT '',
+  `create_time` datetime NULL DEFAULT NULL,
+  `update_by` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT '',
+  `update_time` datetime NULL DEFAULT NULL,
+  `remark` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  PRIMARY KEY (`id`) USING BTREE,
+  INDEX `idx_chat_user`(`user_name` ASC, `status` ASC) USING BTREE
+) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = 'AI内部助手会话' ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Records of lf_chat_session
+-- ----------------------------
 
 -- ----------------------------
 -- Table structure for lf_exec_log
@@ -232,19 +639,11 @@ CREATE TABLE `lf_exec_log`  (
   INDEX `idx_request_id`(`request_id` ASC) USING BTREE,
   INDEX `idx_chain_name`(`chain_name` ASC) USING BTREE,
   INDEX `idx_create_time`(`create_time` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 9 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = 'LiteFlow执行日志表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = 'LiteFlow执行日志表' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of lf_exec_log
 -- ----------------------------
-INSERT INTO `lf_exec_log` VALUES (1, 'a3059defe79b47a0b14a636b728a3ecd', 'batchProcess', 1, NULL, NULL, 'initBatch[初始化批次]==>batchCount[批次数量]==>summarizeBatch[汇总批次]', 'initBatch[初始化批次]<0>==>batchCount[批次数量]<0>==>summarizeBatch[汇总批次]<0>', '{\"executeStepStr\":\"initBatch[初始化批次]==>batchCount[批次数量]==>summarizeBatch[汇总批次]\",\"executeStepStrWithTime\":\"initBatch[初始化批次]<0>==>batchCount[批次数量]<0>==>summarizeBatch[汇总批次]<0>\"}', '{}', '{\"batchCount\":0,\"currentIndex\":0,\"itemResults\":[],\"items\":[],\"orderId\":\"\",\"processedCount\":0,\"steps\":[\"initBatch\",\"batchCount=0\",\"summarizeBatch\"],\"summary\":\"processed 0/0 items\"}', 22, NULL, NULL, 'admin', '2026-07-03 13:37:57');
-INSERT INTO `lf_exec_log` VALUES (2, 'b26aaa1fad67402c94eecd54e586ea41', 'dynamicPricing', 1, NULL, NULL, 'loadMemberLevel[加载会员等级]==>calcFullReduction[满减计算]==>applyCoupon[优惠券抵扣]==>scriptPriceAdjust[脚本调价]==>buildPriceResult[构建定价结果]', 'loadMemberLevel[加载会员等级]<0>==>calcFullReduction[满减计算]<0>==>applyCoupon[优惠券抵扣]<0>==>scriptPriceAdjust[脚本调价]<87>==>buildPriceResult[构建定价结果]<0>', '{\"executeStepStr\":\"loadMemberLevel[加载会员等级]==>calcFullReduction[满减计算]==>applyCoupon[优惠券抵扣]==>scriptPriceAdjust[脚本调价]==>buildPriceResult[构建定价结果]\",\"executeStepStrWithTime\":\"loadMemberLevel[加载会员等级]<0>==>calcFullReduction[满减计算]<0>==>applyCoupon[优惠券抵扣]<0>==>scriptPriceAdjust[脚本调价]<87>==>buildPriceResult[构建定价结果]<0>\"}', '{\"userId\":1001,\"memberLevel\":\"VIP\",\"originalPrice\":299,\"couponCode\":\"SAVE20\"}', '{\"couponAmount\":10,\"couponCode\":\"SAVE20\",\"finalPrice\":90.00,\"memberLevel\":\"VIP\",\"originalPrice\":100.00,\"reductionAmount\":0,\"steps\":[\"loadMemberLevel=VIP\",\"calcFullReduction\",\"applyCoupon\",\"scriptPriceAdjust\",\"buildPriceResult=90.00\"],\"userId\":1001}', 144, NULL, NULL, 'admin', '2026-07-03 14:08:34');
-INSERT INTO `lf_exec_log` VALUES (3, '301467223d08450a9785f2299a832609', 'dynamicPricing', 1, NULL, NULL, 'loadMemberLevel[加载会员等级]==>calcFullReduction[满减计算]==>applyCoupon[优惠券抵扣]==>scriptPriceAdjust[脚本调价]==>buildPriceResult[构建定价结果]', 'loadMemberLevel[加载会员等级]<0>==>calcFullReduction[满减计算]<0>==>applyCoupon[优惠券抵扣]<0>==>scriptPriceAdjust[脚本调价]<0>==>buildPriceResult[构建定价结果]<0>', '{\"executeStepStr\":\"loadMemberLevel[加载会员等级]==>calcFullReduction[满减计算]==>applyCoupon[优惠券抵扣]==>scriptPriceAdjust[脚本调价]==>buildPriceResult[构建定价结果]\",\"executeStepStrWithTime\":\"loadMemberLevel[加载会员等级]<0>==>calcFullReduction[满减计算]<0>==>applyCoupon[优惠券抵扣]<0>==>scriptPriceAdjust[脚本调价]<0>==>buildPriceResult[构建定价结果]<0>\"}', '{\"userId\":1001,\"memberLevel\":\"VIP\",\"originalPrice\":299,\"couponCode\":\"SAVE20\"}', '{\"couponAmount\":10,\"couponCode\":\"SAVE20\",\"finalPrice\":90.00,\"memberLevel\":\"VIP\",\"originalPrice\":100.00,\"reductionAmount\":0,\"steps\":[\"loadMemberLevel=VIP\",\"calcFullReduction\",\"applyCoupon\",\"scriptPriceAdjust\",\"buildPriceResult=90.00\"],\"userId\":1001}', 5, NULL, NULL, 'admin', '2026-07-03 14:09:27');
-INSERT INTO `lf_exec_log` VALUES (4, 'bb97c3696f7c4f509613b9c29d12f77c', 'helloChain', 1, NULL, NULL, 'helloA==>helloB', 'helloA<0>==>helloB<0>', '{\"executeStepStr\":\"helloA==>helloB\",\"executeStepStrWithTime\":\"helloA<0>==>helloB<0>\"}', '{\"name\":\"RuoYi\"}', NULL, 19, NULL, NULL, 'open-api', '2026-07-03 14:19:27');
-INSERT INTO `lf_exec_log` VALUES (5, '3bba08305ddd4fd9bed22d9d30683115', 'returningCustomerPromo', 1, NULL, NULL, 'returningCustomerWelcome==>returningCustomerRepurchase', 'returningCustomerWelcome<0>==>returningCustomerRepurchase<0>', '{\"executeStepStr\":\"returningCustomerWelcome==>returningCustomerRepurchase\",\"executeStepStrWithTime\":\"returningCustomerWelcome<0>==>returningCustomerRepurchase<0>\"}', '{}', '{\"message\":\"欢迎回来，老客专属通道已开启；复购满减活动已匹配\"}', 53, NULL, NULL, 'admin', '2026-07-03 16:35:55');
-INSERT INTO `lf_exec_log` VALUES (6, '54309c6d5621428689be6a224ce0febd', 'returningCustomerPromo', 1, NULL, NULL, 'returningCustomerWelcome==>returningCustomerRepurchase', 'returningCustomerWelcome<0>==>returningCustomerRepurchase<0>', '{\"executeStepStr\":\"returningCustomerWelcome==>returningCustomerRepurchase\",\"executeStepStrWithTime\":\"returningCustomerWelcome<0>==>returningCustomerRepurchase<0>\"}', '{}', '{\"message\":\"欢迎回来，老客专属通道已开启；复购满减活动已匹配\"}', 4, NULL, NULL, 'admin', '2026-07-03 16:37:17');
-INSERT INTO `lf_exec_log` VALUES (7, 'f5ef971da7e84dd0aa4c4504cac2f9a6', 'newCustomerPromo', 1, NULL, NULL, 'newCustomerWelcome==>newCustomerDiscount', 'newCustomerWelcome<0>==>newCustomerDiscount<0>', '{\"executeStepStr\":\"newCustomerWelcome==>newCustomerDiscount\",\"executeStepStrWithTime\":\"newCustomerWelcome<0>==>newCustomerDiscount<0>\"}', '{}', '{\"message\":\"欢迎新客，首单专属礼遇已就绪；已发放新客 8 折券\"}', 4, NULL, NULL, 'admin', '2026-07-03 16:37:21');
-INSERT INTO `lf_exec_log` VALUES (8, '8b3685278a654e5d9ffe91700d7ac48d', '(EL调试)', 1, NULL, NULL, 'returningCustomerWelcome==>returningCustomerRepurchase', 'returningCustomerWelcome<0>==>returningCustomerRepurchase<0>', '{\"executeStepStr\":\"returningCustomerWelcome==>returningCustomerRepurchase\",\"executeStepStrWithTime\":\"returningCustomerWelcome<0>==>returningCustomerRepurchase<0>\"}', '{}', NULL, 2, NULL, NULL, 'admin', '2026-07-03 16:38:37');
 
 -- ----------------------------
 -- Table structure for lf_script
@@ -267,7 +666,7 @@ CREATE TABLE `lf_script`  (
   `remark` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '备注',
   PRIMARY KEY (`id`) USING BTREE,
   UNIQUE INDEX `uk_app_script`(`application_name` ASC, `script_id` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 2 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = 'LiteFlow脚本表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 2 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = 'LiteFlow脚本表' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of lf_script
@@ -291,66 +690,11 @@ CREATE TABLE `lf_script_version`  (
   `remark` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '备注',
   PRIMARY KEY (`id`) USING BTREE,
   INDEX `idx_script_pk_ver`(`script_pk` ASC, `version` ASC) USING BTREE
-) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = 'LiteFlow脚本版本快照' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = 'LiteFlow脚本版本快照' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
--- Table structure for lf_agent_model
+-- Records of lf_script_version
 -- ----------------------------
-DROP TABLE IF EXISTS `lf_agent_model`;
-CREATE TABLE `lf_agent_model` (
-  `id`              bigint       NOT NULL AUTO_INCREMENT COMMENT '主键',
-  `model_code`      varchar(64)  NOT NULL COMMENT '模型编码',
-  `model_name`      varchar(128) DEFAULT NULL COMMENT '显示名称',
-  `provider`        varchar(32)  NOT NULL DEFAULT 'deepseek' COMMENT '供应商',
-  `config_key`      varchar(64)  NOT NULL DEFAULT 'deepseek' COMMENT 'openai-compatible configKey',
-  `base_url`        varchar(255) DEFAULT NULL COMMENT 'API Base URL',
-  `model`           varchar(128) NOT NULL DEFAULT 'deepseek-chat' COMMENT '模型名',
-  `api_key_enc`     varchar(512) DEFAULT NULL COMMENT 'AES 加密 API Key',
-  `status`          char(1)      NOT NULL DEFAULT '0' COMMENT '0正常 1停用',
-  `is_default`      char(1)      NOT NULL DEFAULT '0' COMMENT '是否默认',
-  `daily_call_limit` int         DEFAULT NULL COMMENT '单用户日调用上限',
-  `daily_token_limit` int        DEFAULT NULL COMMENT '单用户日 Token 上限',
-  `create_by`       varchar(64)  DEFAULT '',
-  `create_time`     datetime     DEFAULT NULL,
-  `update_by`       varchar(64)  DEFAULT '',
-  `update_time`     datetime     DEFAULT NULL,
-  `remark`          varchar(500) DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_model_code` (`model_code`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='LiteFlow Agent 模型配置';
-
--- ----------------------------
--- Table structure for lf_chat_session / lf_chat_message
--- ----------------------------
-DROP TABLE IF EXISTS `lf_chat_message`;
-DROP TABLE IF EXISTS `lf_chat_session`;
-CREATE TABLE `lf_chat_session` (
-  `id`          bigint       NOT NULL AUTO_INCREMENT COMMENT '主键',
-  `title`       varchar(128) DEFAULT NULL COMMENT '会话标题',
-  `user_name`   varchar(64)  NOT NULL COMMENT '归属用户',
-  `model_code`  varchar(64)  DEFAULT NULL COMMENT '模型标识',
-  `model_name`  varchar(128) DEFAULT NULL COMMENT '模型名',
-  `status`      char(1)      NOT NULL DEFAULT '0' COMMENT '0正常 1删除',
-  `create_by`   varchar(64)  DEFAULT '',
-  `create_time` datetime     DEFAULT NULL,
-  `update_by`   varchar(64)  DEFAULT '',
-  `update_time` datetime     DEFAULT NULL,
-  `remark`      varchar(500) DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  KEY `idx_chat_user` (`user_name`, `status`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='AI内部助手会话';
-
-CREATE TABLE `lf_chat_message` (
-  `id`          bigint       NOT NULL AUTO_INCREMENT COMMENT '主键',
-  `session_id`  bigint       NOT NULL COMMENT '会话ID',
-  `role`        varchar(16)  NOT NULL COMMENT 'user/assistant/system',
-  `content`     mediumtext   NOT NULL COMMENT '消息内容',
-  `token_count` int          DEFAULT NULL COMMENT 'Token 用量',
-  `create_by`   varchar(64)  DEFAULT '',
-  `create_time` datetime     DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  KEY `idx_chat_session` (`session_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='AI内部助手消息';
 
 -- ----------------------------
 -- Table structure for qrtz_blob_triggers
@@ -363,7 +707,7 @@ CREATE TABLE `qrtz_blob_triggers`  (
   `blob_data` blob NULL COMMENT '存放持久化Trigger对象',
   PRIMARY KEY (`sched_name`, `trigger_name`, `trigger_group`) USING BTREE,
   CONSTRAINT `qrtz_blob_triggers_ibfk_1` FOREIGN KEY (`sched_name`, `trigger_name`, `trigger_group`) REFERENCES `qrtz_triggers` (`sched_name`, `trigger_name`, `trigger_group`) ON DELETE RESTRICT ON UPDATE RESTRICT
-) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = 'Blob类型的触发器表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = 'Blob类型的触发器表' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of qrtz_blob_triggers
@@ -378,7 +722,7 @@ CREATE TABLE `qrtz_calendars`  (
   `calendar_name` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '日历名称',
   `calendar` blob NOT NULL COMMENT '存放持久化calendar对象',
   PRIMARY KEY (`sched_name`, `calendar_name`) USING BTREE
-) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '日历信息表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '日历信息表' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of qrtz_calendars
@@ -396,7 +740,7 @@ CREATE TABLE `qrtz_cron_triggers`  (
   `time_zone_id` varchar(80) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '时区',
   PRIMARY KEY (`sched_name`, `trigger_name`, `trigger_group`) USING BTREE,
   CONSTRAINT `qrtz_cron_triggers_ibfk_1` FOREIGN KEY (`sched_name`, `trigger_name`, `trigger_group`) REFERENCES `qrtz_triggers` (`sched_name`, `trigger_name`, `trigger_group`) ON DELETE RESTRICT ON UPDATE RESTRICT
-) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = 'Cron类型的触发器表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = 'Cron类型的触发器表' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of qrtz_cron_triggers
@@ -421,7 +765,7 @@ CREATE TABLE `qrtz_fired_triggers`  (
   `is_nonconcurrent` varchar(1) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '是否并发',
   `requests_recovery` varchar(1) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '是否接受恢复执行',
   PRIMARY KEY (`sched_name`, `entry_id`) USING BTREE
-) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '已触发的触发器表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '已触发的触发器表' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of qrtz_fired_triggers
@@ -443,7 +787,7 @@ CREATE TABLE `qrtz_job_details`  (
   `requests_recovery` varchar(1) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '是否接受恢复执行',
   `job_data` blob NULL COMMENT '存放持久化job对象',
   PRIMARY KEY (`sched_name`, `job_name`, `job_group`) USING BTREE
-) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '任务详细信息表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '任务详细信息表' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of qrtz_job_details
@@ -457,7 +801,7 @@ CREATE TABLE `qrtz_locks`  (
   `sched_name` varchar(120) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '调度名称',
   `lock_name` varchar(40) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '悲观锁名称',
   PRIMARY KEY (`sched_name`, `lock_name`) USING BTREE
-) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '存储的悲观锁信息表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '存储的悲观锁信息表' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of qrtz_locks
@@ -471,7 +815,7 @@ CREATE TABLE `qrtz_paused_trigger_grps`  (
   `sched_name` varchar(120) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '调度名称',
   `trigger_group` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT 'qrtz_triggers表trigger_group的外键',
   PRIMARY KEY (`sched_name`, `trigger_group`) USING BTREE
-) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '暂停的触发器表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '暂停的触发器表' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of qrtz_paused_trigger_grps
@@ -487,7 +831,7 @@ CREATE TABLE `qrtz_scheduler_state`  (
   `last_checkin_time` bigint NOT NULL COMMENT '上次检查时间',
   `checkin_interval` bigint NOT NULL COMMENT '检查间隔时间',
   PRIMARY KEY (`sched_name`, `instance_name`) USING BTREE
-) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '调度器状态表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '调度器状态表' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of qrtz_scheduler_state
@@ -506,7 +850,7 @@ CREATE TABLE `qrtz_simple_triggers`  (
   `times_triggered` bigint NOT NULL COMMENT '已经触发的次数',
   PRIMARY KEY (`sched_name`, `trigger_name`, `trigger_group`) USING BTREE,
   CONSTRAINT `qrtz_simple_triggers_ibfk_1` FOREIGN KEY (`sched_name`, `trigger_name`, `trigger_group`) REFERENCES `qrtz_triggers` (`sched_name`, `trigger_name`, `trigger_group`) ON DELETE RESTRICT ON UPDATE RESTRICT
-) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '简单触发器的信息表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '简单触发器的信息表' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of qrtz_simple_triggers
@@ -533,7 +877,7 @@ CREATE TABLE `qrtz_simprop_triggers`  (
   `bool_prop_2` varchar(1) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT 'Boolean类型的trigger的第二个参数',
   PRIMARY KEY (`sched_name`, `trigger_name`, `trigger_group`) USING BTREE,
   CONSTRAINT `qrtz_simprop_triggers_ibfk_1` FOREIGN KEY (`sched_name`, `trigger_name`, `trigger_group`) REFERENCES `qrtz_triggers` (`sched_name`, `trigger_name`, `trigger_group`) ON DELETE RESTRICT ON UPDATE RESTRICT
-) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '同步机制的行锁表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '同步机制的行锁表' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of qrtz_simprop_triggers
@@ -563,7 +907,7 @@ CREATE TABLE `qrtz_triggers`  (
   PRIMARY KEY (`sched_name`, `trigger_name`, `trigger_group`) USING BTREE,
   INDEX `sched_name`(`sched_name` ASC, `job_name` ASC, `job_group` ASC) USING BTREE,
   CONSTRAINT `qrtz_triggers_ibfk_1` FOREIGN KEY (`sched_name`, `job_name`, `job_group`) REFERENCES `qrtz_job_details` (`sched_name`, `job_name`, `job_group`) ON DELETE RESTRICT ON UPDATE RESTRICT
-) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '触发器详细信息表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '触发器详细信息表' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of qrtz_triggers
@@ -585,7 +929,7 @@ CREATE TABLE `sys_config`  (
   `update_time` datetime NULL DEFAULT NULL COMMENT '更新时间',
   `remark` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '备注',
   PRIMARY KEY (`config_id`) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 100 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '参数配置表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 100 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '参数配置表' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of sys_config
@@ -593,7 +937,7 @@ CREATE TABLE `sys_config`  (
 INSERT INTO `sys_config` VALUES (1, '主框架页-默认皮肤样式名称', 'sys.index.skinName', 'skin-blue', 'Y', 'admin', '2026-07-03 10:00:46', '', NULL, '蓝色 skin-blue、绿色 skin-green、紫色 skin-purple、红色 skin-red、黄色 skin-yellow');
 INSERT INTO `sys_config` VALUES (2, '用户管理-账号初始密码', 'sys.user.initPassword', '123456', 'Y', 'admin', '2026-07-03 10:00:46', '', NULL, '初始化密码 123456');
 INSERT INTO `sys_config` VALUES (3, '主框架页-侧边栏主题', 'sys.index.sideTheme', 'theme-dark', 'Y', 'admin', '2026-07-03 10:00:46', '', NULL, '深色主题theme-dark，浅色主题theme-light');
-INSERT INTO `sys_config` VALUES (4, '账号自助-验证码开关', 'sys.account.captchaEnabled', 'true', 'Y', 'admin', '2026-07-03 10:00:46', '', NULL, '是否开启验证码功能（true开启，false关闭）');
+INSERT INTO `sys_config` VALUES (4, '账号自助-验证码开关', 'sys.account.captchaEnabled', 'false', 'Y', 'admin', '2026-07-03 10:00:46', 'admin', '2026-07-15 21:44:55', '是否开启验证码功能（true开启，false关闭）');
 INSERT INTO `sys_config` VALUES (5, '账号自助-是否开启用户注册功能', 'sys.account.registerUser', 'false', 'Y', 'admin', '2026-07-03 10:00:46', '', NULL, '是否开启注册用户功能（true开启，false关闭）');
 INSERT INTO `sys_config` VALUES (6, '用户登录-黑名单列表', 'sys.login.blackIPList', '', 'Y', 'admin', '2026-07-03 10:00:46', '', NULL, '设置登录IP黑名单限制，多个匹配项以;分隔，支持匹配（*通配、网段）');
 INSERT INTO `sys_config` VALUES (7, '用户管理-初始密码修改策略', 'sys.account.initPasswordModify', '1', 'Y', 'admin', '2026-07-03 10:00:46', '', NULL, '0：初始密码修改策略关闭，没有任何提示，1：提醒用户，如果未修改初始密码，则在登录时就会提醒修改密码对话框');
@@ -620,7 +964,7 @@ CREATE TABLE `sys_dept`  (
   `update_by` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT '' COMMENT '更新者',
   `update_time` datetime NULL DEFAULT NULL COMMENT '更新时间',
   PRIMARY KEY (`dept_id`) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 200 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '部门表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 200 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '部门表' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of sys_dept
@@ -656,7 +1000,7 @@ CREATE TABLE `sys_dict_data`  (
   `update_time` datetime NULL DEFAULT NULL COMMENT '更新时间',
   `remark` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '备注',
   PRIMARY KEY (`dict_code`) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 100 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '字典数据表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 100 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '字典数据表' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of sys_dict_data
@@ -707,7 +1051,7 @@ CREATE TABLE `sys_dict_type`  (
   `remark` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '备注',
   PRIMARY KEY (`dict_id`) USING BTREE,
   UNIQUE INDEX `dict_type`(`dict_type` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 100 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '字典类型表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 100 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '字典类型表' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of sys_dict_type
@@ -742,7 +1086,7 @@ CREATE TABLE `sys_job`  (
   `update_time` datetime NULL DEFAULT NULL COMMENT '更新时间',
   `remark` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT '' COMMENT '备注信息',
   PRIMARY KEY (`job_id`, `job_name`, `job_group`) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 100 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '定时任务调度表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 100 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '定时任务调度表' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of sys_job
@@ -750,7 +1094,7 @@ CREATE TABLE `sys_job`  (
 INSERT INTO `sys_job` VALUES (1, '系统默认（无参）', 'DEFAULT', 'ryTask.ryNoParams', '0/10 * * * * ?', '3', '1', '1', 'admin', '2026-07-03 10:00:46', '', NULL, '');
 INSERT INTO `sys_job` VALUES (2, '系统默认（有参）', 'DEFAULT', 'ryTask.ryParams(\'ry\')', '0/15 * * * * ?', '3', '1', '1', 'admin', '2026-07-03 10:00:46', '', NULL, '');
 INSERT INTO `sys_job` VALUES (3, '系统默认（多参）', 'DEFAULT', 'ryTask.ryMultipleParams(\'ry\', true, 2000L, 316.50D, 100)', '0/20 * * * * ?', '3', '1', '1', 'admin', '2026-07-03 10:00:46', '', NULL, '');
-INSERT INTO `sys_job` VALUES (4, 'LiteFlow定时执行helloChain', 'DEFAULT', 'liteFlowTask.executeByName(\'helloChain\')', '0 0/30 * * * ?', '3', '1', '1', 'admin', '2026-07-14 13:00:00', '', NULL, '示例：定时执行链路，默认暂停。可改为 executeByName(\'orderProcess\', \'{"userId":1001}\')');
+INSERT INTO `sys_job` VALUES (4, 'LiteFlow定时执行helloChain', 'DEFAULT', 'liteFlowTask.executeByName(\'helloChain\')', '0 0/30 * * * ?', '3', '1', '1', 'admin', '2026-07-14 13:00:00', '', NULL, '示例：定时执行链路，默认暂停。可改为 executeByName(\'orderProcess\', \'{\"userId\":1001}\')');
 
 -- ----------------------------
 -- Table structure for sys_job_log
@@ -768,7 +1112,7 @@ CREATE TABLE `sys_job_log`  (
   `end_time` datetime NULL DEFAULT NULL COMMENT '执行结束时间',
   `create_time` datetime NULL DEFAULT NULL COMMENT '创建时间',
   PRIMARY KEY (`job_log_id`) USING BTREE
-) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '定时任务调度日志表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '定时任务调度日志表' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of sys_job_log
@@ -791,7 +1135,7 @@ CREATE TABLE `sys_logininfor`  (
   PRIMARY KEY (`info_id`) USING BTREE,
   INDEX `idx_sys_logininfor_s`(`status` ASC) USING BTREE,
   INDEX `idx_sys_logininfor_lt`(`login_time` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 113 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '系统访问记录' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 126 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '系统访问记录' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of sys_logininfor
@@ -823,7 +1167,7 @@ CREATE TABLE `sys_menu`  (
   `update_time` datetime NULL DEFAULT NULL COMMENT '更新时间',
   `remark` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT '' COMMENT '备注',
   PRIMARY KEY (`menu_id`) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 2251 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '菜单权限表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 2374 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '菜单权限表' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of sys_menu
@@ -921,8 +1265,8 @@ INSERT INTO `sys_menu` VALUES (2005, '执行日志', 2000, 5, 'log', 'liteflow/l
 INSERT INTO `sys_menu` VALUES (2006, '规则审计', 2000, 6, 'audit', 'liteflow/audit/index', '', '', 1, 0, 'C', '0', '0', 'liteflow:audit:list', 'documentation', 'admin', '2026-07-03 14:22:34', '', NULL, 'LiteFlow规则变更审计');
 INSERT INTO `sys_menu` VALUES (2007, '版本历史', 2000, 7, 'version', 'liteflow/version/index', '', '', 1, 0, 'C', '0', '0', 'liteflow:chain:query', 'time', 'admin', '2026-07-03 14:27:42', '', NULL, 'LiteFlow发布版本快照');
 INSERT INTO `sys_menu` VALUES (2008, '监控仪表盘', 2000, 8, 'dashboard', 'liteflow/dashboard/index', '', '', 1, 0, 'C', '0', '0', 'liteflow:dashboard:view', 'chart', 'admin', '2026-07-03 16:28:34', '', NULL, 'LiteFlow执行监控');
-INSERT INTO `sys_menu` VALUES (2009, '模型配置', 2000, 9, 'agent', 'liteflow/agent/index', '', '', 1, 0, 'C', '0', '0', 'liteflow:agent:list', 'skill', 'admin', '2026-07-14 16:00:00', '', NULL, 'LiteFlow Agent 模型配置');
-INSERT INTO `sys_menu` VALUES (2010, 'AI助手', 2000, 10, 'chat', 'liteflow/chat/index', '', '', 1, 0, 'C', '0', '0', 'liteflow:chat:list', 'message', 'admin', '2026-07-16 10:00:00', '', NULL, '内部 AI 对话助手');
+INSERT INTO `sys_menu` VALUES (2009, '模型配置', 2000, 9, 'agent', 'liteflow/agent/index', '', '', 1, 0, 'C', '1', '0', 'liteflow:agent:list', 'skill', 'admin', '2026-07-14 16:00:00', '', NULL, '已合并到 AI能力-模型管理');
+INSERT INTO `sys_menu` VALUES (2010, 'AI助手', 2300, 0, 'chat', 'liteflow/chat/index', '', '', 1, 0, 'C', '0', '0', 'liteflow:chat:list', 'message', 'admin', '2026-07-21 22:10:21', '', NULL, '内部 AI 对话助手');
 INSERT INTO `sys_menu` VALUES (2100, '链路查询', 2001, 1, '', '', '', '', 1, 0, 'F', '0', '0', 'liteflow:chain:query', '#', 'admin', '2026-07-03 10:52:37', '', NULL, '');
 INSERT INTO `sys_menu` VALUES (2101, '链路新增', 2001, 2, '', '', '', '', 1, 0, 'F', '0', '0', 'liteflow:chain:add', '#', 'admin', '2026-07-03 10:52:37', '', NULL, '');
 INSERT INTO `sys_menu` VALUES (2102, '链路修改', 2001, 3, '', '', '', '', 1, 0, 'F', '0', '0', 'liteflow:chain:edit', '#', 'admin', '2026-07-03 10:52:37', '', NULL, '');
@@ -949,9 +1293,48 @@ INSERT INTO `sys_menu` VALUES (2261, '模型新增', 2009, 2, '', '', '', '', 1,
 INSERT INTO `sys_menu` VALUES (2262, '模型修改', 2009, 3, '', '', '', '', 1, 0, 'F', '0', '0', 'liteflow:agent:edit', '#', 'admin', '2026-07-14 16:00:00', '', NULL, '');
 INSERT INTO `sys_menu` VALUES (2263, '模型删除', 2009, 4, '', '', '', '', 1, 0, 'F', '0', '0', 'liteflow:agent:remove', '#', 'admin', '2026-07-14 16:00:00', '', NULL, '');
 INSERT INTO `sys_menu` VALUES (2264, '模型配置权', 2009, 5, '', '', '', '', 1, 0, 'F', '0', '0', 'liteflow:agent:config', '#', 'admin', '2026-07-14 16:00:00', '', NULL, '');
-INSERT INTO `sys_menu` VALUES (2270, '会话查询', 2010, 1, '', '', '', '', 1, 0, 'F', '0', '0', 'liteflow:chat:query', '#', 'admin', '2026-07-16 10:00:00', '', NULL, '');
-INSERT INTO `sys_menu` VALUES (2271, '会话发送', 2010, 2, '', '', '', '', 1, 0, 'F', '0', '0', 'liteflow:chat:send', '#', 'admin', '2026-07-16 10:00:00', '', NULL, '');
-INSERT INTO `sys_menu` VALUES (2272, '会话删除', 2010, 3, '', '', '', '', 1, 0, 'F', '0', '0', 'liteflow:chat:remove', '#', 'admin', '2026-07-16 10:00:00', '', NULL, '');
+INSERT INTO `sys_menu` VALUES (2270, '会话查询', 2010, 1, '', '', '', '', 1, 0, 'F', '0', '0', 'liteflow:chat:query', '#', 'admin', '2026-07-21 22:10:21', '', NULL, '');
+INSERT INTO `sys_menu` VALUES (2271, '会话发送', 2010, 2, '', '', '', '', 1, 0, 'F', '0', '0', 'liteflow:chat:send', '#', 'admin', '2026-07-21 22:10:21', '', NULL, '');
+INSERT INTO `sys_menu` VALUES (2272, '会话删除', 2010, 3, '', '', '', '', 1, 0, 'F', '0', '0', 'liteflow:chat:remove', '#', 'admin', '2026-07-21 22:10:21', '', NULL, '');
+INSERT INTO `sys_menu` VALUES (2300, 'AI能力', 0, 6, 'aikit', NULL, '', '', 1, 0, 'M', '0', '0', '', 'guide', 'admin', '2026-08-04 22:46:31', '', NULL, 'AI Kit 配置面');
+INSERT INTO `sys_menu` VALUES (2301, '模型管理', 2300, 1, 'model', 'aikit/model/index', '', '', 1, 0, 'C', '0', '0', 'aikit:model:list', 'skill', 'admin', '2026-08-04 22:46:31', '', NULL, '统一模型入口（写入同步 lf_agent_model）');
+INSERT INTO `sys_menu` VALUES (2302, '工具管理', 2300, 2, 'tool', 'aikit/tool/index', '', '', 1, 0, 'C', '0', '0', 'aikit:tool:list', 'tool', 'admin', '2026-08-04 22:46:31', '', NULL, 'AI Kit 工具');
+INSERT INTO `sys_menu` VALUES (2303, '智能体管理', 2300, 3, 'agent', 'aikit/agent/index', '', '', 1, 0, 'C', '0', '0', 'aikit:agent:list', 'peoples', 'admin', '2026-08-04 22:46:31', '', NULL, 'AI Kit 智能体');
+INSERT INTO `sys_menu` VALUES (2304, '知识库管理', 2300, 4, 'knowledge', 'aikit/knowledge/index', '', '', 1, 0, 'C', '0', '0', 'aikit:knowledge:list', 'documentation', 'admin', '2026-08-04 23:08:33', '', NULL, 'AI Kit 知识库');
+INSERT INTO `sys_menu` VALUES (2305, '技能管理', 2300, 5, 'skill', 'aikit/skill/index', '', '', 1, 0, 'C', '0', '0', 'aikit:skill:list', 'education', 'admin', '2026-08-04 23:27:01', '', NULL, 'AI Kit Skills');
+INSERT INTO `sys_menu` VALUES (2306, '记忆管理', 2300, 6, 'memory', 'aikit/memory/index', '', '', 1, 0, 'C', '0', '0', 'aikit:memory:list', 'redis', 'admin', '2026-08-04 23:27:01', '', NULL, 'AI Kit Memory');
+INSERT INTO `sys_menu` VALUES (2307, '上下文策略', 2300, 7, 'context', 'aikit/context/index', '', '', 1, 0, 'C', '0', '0', 'aikit:context:list', 'dict', 'admin', '2026-08-04 23:27:01', '', NULL, 'AI Kit Context');
+INSERT INTO `sys_menu` VALUES (2310, '模型查询', 2301, 1, '', '', '', '', 1, 0, 'F', '0', '0', 'aikit:model:query', '#', 'admin', '2026-08-04 22:46:31', '', NULL, '');
+INSERT INTO `sys_menu` VALUES (2311, '模型新增', 2301, 2, '', '', '', '', 1, 0, 'F', '0', '0', 'aikit:model:add', '#', 'admin', '2026-08-04 22:46:31', '', NULL, '');
+INSERT INTO `sys_menu` VALUES (2312, '模型修改', 2301, 3, '', '', '', '', 1, 0, 'F', '0', '0', 'aikit:model:edit', '#', 'admin', '2026-08-04 22:46:31', '', NULL, '');
+INSERT INTO `sys_menu` VALUES (2313, '模型删除', 2301, 4, '', '', '', '', 1, 0, 'F', '0', '0', 'aikit:model:remove', '#', 'admin', '2026-08-04 22:46:31', '', NULL, '');
+INSERT INTO `sys_menu` VALUES (2314, '模型测试', 2301, 5, '', '', '', '', 1, 0, 'F', '0', '0', 'aikit:model:test', '#', 'admin', '2026-08-04 22:46:31', '', NULL, '');
+INSERT INTO `sys_menu` VALUES (2320, '工具查询', 2302, 1, '', '', '', '', 1, 0, 'F', '0', '0', 'aikit:tool:query', '#', 'admin', '2026-08-04 22:46:31', '', NULL, '');
+INSERT INTO `sys_menu` VALUES (2321, '工具新增', 2302, 2, '', '', '', '', 1, 0, 'F', '0', '0', 'aikit:tool:add', '#', 'admin', '2026-08-04 22:46:31', '', NULL, '');
+INSERT INTO `sys_menu` VALUES (2322, '工具修改', 2302, 3, '', '', '', '', 1, 0, 'F', '0', '0', 'aikit:tool:edit', '#', 'admin', '2026-08-04 22:46:31', '', NULL, '');
+INSERT INTO `sys_menu` VALUES (2323, '工具删除', 2302, 4, '', '', '', '', 1, 0, 'F', '0', '0', 'aikit:tool:remove', '#', 'admin', '2026-08-04 22:46:31', '', NULL, '');
+INSERT INTO `sys_menu` VALUES (2330, '智能体查询', 2303, 1, '', '', '', '', 1, 0, 'F', '0', '0', 'aikit:agent:query', '#', 'admin', '2026-08-04 22:46:31', '', NULL, '');
+INSERT INTO `sys_menu` VALUES (2331, '智能体新增', 2303, 2, '', '', '', '', 1, 0, 'F', '0', '0', 'aikit:agent:add', '#', 'admin', '2026-08-04 22:46:31', '', NULL, '');
+INSERT INTO `sys_menu` VALUES (2332, '智能体修改', 2303, 3, '', '', '', '', 1, 0, 'F', '0', '0', 'aikit:agent:edit', '#', 'admin', '2026-08-04 22:46:31', '', NULL, '');
+INSERT INTO `sys_menu` VALUES (2333, '智能体删除', 2303, 4, '', '', '', '', 1, 0, 'F', '0', '0', 'aikit:agent:remove', '#', 'admin', '2026-08-04 22:46:31', '', NULL, '');
+INSERT INTO `sys_menu` VALUES (2334, '智能体试跑', 2303, 5, '', '', '', '', 1, 0, 'F', '0', '0', 'aikit:agent:run', '#', 'admin', '2026-08-04 22:46:31', '', NULL, '');
+INSERT INTO `sys_menu` VALUES (2340, '知识库查询', 2304, 1, '', '', '', '', 1, 0, 'F', '0', '0', 'aikit:knowledge:query', '#', 'admin', '2026-08-04 23:08:33', '', NULL, '');
+INSERT INTO `sys_menu` VALUES (2341, '知识库新增', 2304, 2, '', '', '', '', 1, 0, 'F', '0', '0', 'aikit:knowledge:add', '#', 'admin', '2026-08-04 23:08:33', '', NULL, '');
+INSERT INTO `sys_menu` VALUES (2342, '知识库修改', 2304, 3, '', '', '', '', 1, 0, 'F', '0', '0', 'aikit:knowledge:edit', '#', 'admin', '2026-08-04 23:08:33', '', NULL, '');
+INSERT INTO `sys_menu` VALUES (2343, '知识库删除', 2304, 4, '', '', '', '', 1, 0, 'F', '0', '0', 'aikit:knowledge:remove', '#', 'admin', '2026-08-04 23:08:33', '', NULL, '');
+INSERT INTO `sys_menu` VALUES (2344, '文档上传', 2304, 5, '', '', '', '', 1, 0, 'F', '0', '0', 'aikit:knowledge:upload', '#', 'admin', '2026-08-04 23:08:33', '', NULL, '');
+INSERT INTO `sys_menu` VALUES (2345, '重建索引', 2304, 6, '', '', '', '', 1, 0, 'F', '0', '0', 'aikit:knowledge:reindex', '#', 'admin', '2026-08-04 23:08:33', '', NULL, '');
+INSERT INTO `sys_menu` VALUES (2350, '技能查询', 2305, 1, '', '', '', '', 1, 0, 'F', '0', '0', 'aikit:skill:query', '#', 'admin', '2026-08-04 23:27:01', '', NULL, '');
+INSERT INTO `sys_menu` VALUES (2351, '技能新增', 2305, 2, '', '', '', '', 1, 0, 'F', '0', '0', 'aikit:skill:add', '#', 'admin', '2026-08-04 23:27:01', '', NULL, '');
+INSERT INTO `sys_menu` VALUES (2352, '技能修改', 2305, 3, '', '', '', '', 1, 0, 'F', '0', '0', 'aikit:skill:edit', '#', 'admin', '2026-08-04 23:27:01', '', NULL, '');
+INSERT INTO `sys_menu` VALUES (2353, '技能删除', 2305, 4, '', '', '', '', 1, 0, 'F', '0', '0', 'aikit:skill:remove', '#', 'admin', '2026-08-04 23:27:01', '', NULL, '');
+INSERT INTO `sys_menu` VALUES (2360, '记忆查询', 2306, 1, '', '', '', '', 1, 0, 'F', '0', '0', 'aikit:memory:query', '#', 'admin', '2026-08-04 23:27:01', '', NULL, '');
+INSERT INTO `sys_menu` VALUES (2361, '记忆新增', 2306, 2, '', '', '', '', 1, 0, 'F', '0', '0', 'aikit:memory:add', '#', 'admin', '2026-08-04 23:27:01', '', NULL, '');
+INSERT INTO `sys_menu` VALUES (2362, '记忆删除', 2306, 3, '', '', '', '', 1, 0, 'F', '0', '0', 'aikit:memory:remove', '#', 'admin', '2026-08-04 23:27:01', '', NULL, '');
+INSERT INTO `sys_menu` VALUES (2370, '策略查询', 2307, 1, '', '', '', '', 1, 0, 'F', '0', '0', 'aikit:context:query', '#', 'admin', '2026-08-04 23:27:01', '', NULL, '');
+INSERT INTO `sys_menu` VALUES (2371, '策略新增', 2307, 2, '', '', '', '', 1, 0, 'F', '0', '0', 'aikit:context:add', '#', 'admin', '2026-08-04 23:27:01', '', NULL, '');
+INSERT INTO `sys_menu` VALUES (2372, '策略修改', 2307, 3, '', '', '', '', 1, 0, 'F', '0', '0', 'aikit:context:edit', '#', 'admin', '2026-08-04 23:27:01', '', NULL, '');
+INSERT INTO `sys_menu` VALUES (2373, '策略删除', 2307, 4, '', '', '', '', 1, 0, 'F', '0', '0', 'aikit:context:remove', '#', 'admin', '2026-08-04 23:27:01', '', NULL, '');
 
 -- ----------------------------
 -- Table structure for sys_notice
@@ -969,7 +1352,7 @@ CREATE TABLE `sys_notice`  (
   `update_time` datetime NULL DEFAULT NULL COMMENT '更新时间',
   `remark` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '备注',
   PRIMARY KEY (`notice_id`) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 10 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '通知公告表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 10 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '通知公告表' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of sys_notice
@@ -989,7 +1372,7 @@ CREATE TABLE `sys_notice_read`  (
   `read_time` datetime NOT NULL COMMENT '阅读时间',
   PRIMARY KEY (`read_id`) USING BTREE,
   UNIQUE INDEX `uk_user_notice`(`user_id` ASC, `notice_id` ASC) USING BTREE COMMENT '同一用户同一公告只记录一次'
-) ENGINE = InnoDB AUTO_INCREMENT = 4 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '公告已读记录表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 4 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '公告已读记录表' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of sys_notice_read
@@ -1024,7 +1407,7 @@ CREATE TABLE `sys_oper_log`  (
   INDEX `idx_sys_oper_log_bt`(`business_type` ASC) USING BTREE,
   INDEX `idx_sys_oper_log_s`(`status` ASC) USING BTREE,
   INDEX `idx_sys_oper_log_ot`(`oper_time` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 126 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '操作日志记录' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 135 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '操作日志记录' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of sys_oper_log
@@ -1046,7 +1429,7 @@ CREATE TABLE `sys_post`  (
   `update_time` datetime NULL DEFAULT NULL COMMENT '更新时间',
   `remark` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '备注',
   PRIMARY KEY (`post_id`) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 5 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '岗位信息表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 5 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '岗位信息表' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of sys_post
@@ -1076,7 +1459,7 @@ CREATE TABLE `sys_role`  (
   `update_time` datetime NULL DEFAULT NULL COMMENT '更新时间',
   `remark` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '备注',
   PRIMARY KEY (`role_id`) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 100 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '角色信息表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 100 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '角色信息表' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of sys_role
@@ -1092,7 +1475,7 @@ CREATE TABLE `sys_role_dept`  (
   `role_id` bigint NOT NULL COMMENT '角色ID',
   `dept_id` bigint NOT NULL COMMENT '部门ID',
   PRIMARY KEY (`role_id`, `dept_id`) USING BTREE
-) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '角色和部门关联表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '角色和部门关联表' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of sys_role_dept
@@ -1109,7 +1492,7 @@ CREATE TABLE `sys_role_menu`  (
   `role_id` bigint NOT NULL COMMENT '角色ID',
   `menu_id` bigint NOT NULL COMMENT '菜单ID',
   PRIMARY KEY (`role_id`, `menu_id`) USING BTREE
-) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '角色和菜单关联表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '角色和菜单关联表' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of sys_role_menu
@@ -1208,9 +1591,6 @@ INSERT INTO `sys_role_menu` VALUES (2, 2006);
 INSERT INTO `sys_role_menu` VALUES (2, 2007);
 INSERT INTO `sys_role_menu` VALUES (2, 2008);
 INSERT INTO `sys_role_menu` VALUES (2, 2010);
-INSERT INTO `sys_role_menu` VALUES (2, 2270);
-INSERT INTO `sys_role_menu` VALUES (2, 2271);
-INSERT INTO `sys_role_menu` VALUES (2, 2272);
 INSERT INTO `sys_role_menu` VALUES (2, 2100);
 INSERT INTO `sys_role_menu` VALUES (2, 2101);
 INSERT INTO `sys_role_menu` VALUES (2, 2102);
@@ -1232,6 +1612,48 @@ INSERT INTO `sys_role_menu` VALUES (2, 2231);
 INSERT INTO `sys_role_menu` VALUES (2, 2240);
 INSERT INTO `sys_role_menu` VALUES (2, 2241);
 INSERT INTO `sys_role_menu` VALUES (2, 2250);
+INSERT INTO `sys_role_menu` VALUES (2, 2270);
+INSERT INTO `sys_role_menu` VALUES (2, 2271);
+INSERT INTO `sys_role_menu` VALUES (2, 2272);
+INSERT INTO `sys_role_menu` VALUES (2, 2300);
+INSERT INTO `sys_role_menu` VALUES (2, 2301);
+INSERT INTO `sys_role_menu` VALUES (2, 2302);
+INSERT INTO `sys_role_menu` VALUES (2, 2303);
+INSERT INTO `sys_role_menu` VALUES (2, 2304);
+INSERT INTO `sys_role_menu` VALUES (2, 2305);
+INSERT INTO `sys_role_menu` VALUES (2, 2306);
+INSERT INTO `sys_role_menu` VALUES (2, 2307);
+INSERT INTO `sys_role_menu` VALUES (2, 2310);
+INSERT INTO `sys_role_menu` VALUES (2, 2311);
+INSERT INTO `sys_role_menu` VALUES (2, 2312);
+INSERT INTO `sys_role_menu` VALUES (2, 2313);
+INSERT INTO `sys_role_menu` VALUES (2, 2314);
+INSERT INTO `sys_role_menu` VALUES (2, 2320);
+INSERT INTO `sys_role_menu` VALUES (2, 2321);
+INSERT INTO `sys_role_menu` VALUES (2, 2322);
+INSERT INTO `sys_role_menu` VALUES (2, 2323);
+INSERT INTO `sys_role_menu` VALUES (2, 2330);
+INSERT INTO `sys_role_menu` VALUES (2, 2331);
+INSERT INTO `sys_role_menu` VALUES (2, 2332);
+INSERT INTO `sys_role_menu` VALUES (2, 2333);
+INSERT INTO `sys_role_menu` VALUES (2, 2334);
+INSERT INTO `sys_role_menu` VALUES (2, 2340);
+INSERT INTO `sys_role_menu` VALUES (2, 2341);
+INSERT INTO `sys_role_menu` VALUES (2, 2342);
+INSERT INTO `sys_role_menu` VALUES (2, 2343);
+INSERT INTO `sys_role_menu` VALUES (2, 2344);
+INSERT INTO `sys_role_menu` VALUES (2, 2345);
+INSERT INTO `sys_role_menu` VALUES (2, 2350);
+INSERT INTO `sys_role_menu` VALUES (2, 2351);
+INSERT INTO `sys_role_menu` VALUES (2, 2352);
+INSERT INTO `sys_role_menu` VALUES (2, 2353);
+INSERT INTO `sys_role_menu` VALUES (2, 2360);
+INSERT INTO `sys_role_menu` VALUES (2, 2361);
+INSERT INTO `sys_role_menu` VALUES (2, 2362);
+INSERT INTO `sys_role_menu` VALUES (2, 2370);
+INSERT INTO `sys_role_menu` VALUES (2, 2371);
+INSERT INTO `sys_role_menu` VALUES (2, 2372);
+INSERT INTO `sys_role_menu` VALUES (2, 2373);
 
 -- ----------------------------
 -- Table structure for sys_user
@@ -1259,12 +1681,12 @@ CREATE TABLE `sys_user`  (
   `update_time` datetime NULL DEFAULT NULL COMMENT '更新时间',
   `remark` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '备注',
   PRIMARY KEY (`user_id`) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 100 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '用户信息表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 100 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '用户信息表' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of sys_user
 -- ----------------------------
-INSERT INTO `sys_user` VALUES (1, 103, 'admin', '若依', '00', 'ry@163.com', '15888888888', '1', '', '$2a$10$7JB720yubVSZvUI0rEqK/.VqGOZTH.ulu33dHOiBE8ByOhJIrdAu2', '0', '0', '127.0.0.1', '2026-07-03 16:44:30', '2026-07-03 10:00:45', 'admin', '2026-07-03 10:00:45', '', NULL, '管理员');
+INSERT INTO `sys_user` VALUES (1, 103, 'admin', '若依', '00', 'ry@163.com', '15888888888', '1', '', '$2a$10$7JB720yubVSZvUI0rEqK/.VqGOZTH.ulu33dHOiBE8ByOhJIrdAu2', '0', '0', '127.0.0.1', '2026-08-18 22:26:52', '2026-07-03 10:00:45', 'admin', '2026-07-03 10:00:45', '', NULL, '管理员');
 INSERT INTO `sys_user` VALUES (2, 105, 'ry', '若依', '00', 'ry@qq.com', '15666666666', '1', '', '$2a$10$7JB720yubVSZvUI0rEqK/.VqGOZTH.ulu33dHOiBE8ByOhJIrdAu2', '0', '0', '127.0.0.1', '2026-07-03 10:00:45', '2026-07-03 10:00:45', 'admin', '2026-07-03 10:00:45', '', NULL, '测试员');
 
 -- ----------------------------
@@ -1275,7 +1697,7 @@ CREATE TABLE `sys_user_post`  (
   `user_id` bigint NOT NULL COMMENT '用户ID',
   `post_id` bigint NOT NULL COMMENT '岗位ID',
   PRIMARY KEY (`user_id`, `post_id`) USING BTREE
-) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '用户与岗位关联表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '用户与岗位关联表' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of sys_user_post
@@ -1291,7 +1713,7 @@ CREATE TABLE `sys_user_role`  (
   `user_id` bigint NOT NULL COMMENT '用户ID',
   `role_id` bigint NOT NULL COMMENT '角色ID',
   PRIMARY KEY (`user_id`, `role_id`) USING BTREE
-) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '用户和角色关联表' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '用户和角色关联表' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of sys_user_role

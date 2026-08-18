@@ -37,17 +37,17 @@
 - **LangChain4j**（AiServices、Tool Calling）
 - **LangGraph4j**（StateGraph 条件边）
 - **RAG**（本地 Embedding + 内存向量库 + 售后知识问答 Demo）
-- **内部 AI 助手**（后台多轮对话 + SSE，复用模型配置与配额）
-- **Phase 7：MCP Server + 独立多 Agent**（系统能力封装为 Tools；Chat / Risk / RAG / Ops 与 LiteFlow 解耦）
-- **Phase 8：AI Kit 配置面**（admin 菜单管理模型 / 工具 / 智能体 / 知识库 / 技能 / 记忆 / 上下文；配置驱动 `AgentRuntime`）
+- **内部 AI 助手**（后台多轮对话 + SSE，复用模型管理与配额）
+- **MCP Server + 独立多 Agent**（系统能力封装为 Tools；Chat / Risk / RAG / Ops 与 LiteFlow 解耦）
+- **AI Kit 配置面**（admin 菜单管理模型 / 工具 / 智能体 / 知识库 / 技能 / 记忆 / 上下文；配置驱动 `AgentRuntime`）
 
 AI 节点与普通 Java / 脚本节点可在同一条 EL 链路中混编，共用模型配置、日配额、执行日志与试跑洞察展示。另提供**不依赖 LiteFlow 的 MCP / Agent 独立进程**，便于二次开发与单独部署。
 
 适合作为团队内部的 **规则编排中台**，或二次开发动态定价、风控策略、智能客服、知识问答、**MCP / Agent 助手**等场景的基础工程。
 
-> **定位说明：** 本项目以 **LiteFlow 逻辑编排** 为骨架；AI 能力通过独立模块接入，可按需启用。Phase 7/8 的 MCP / Agent / 配置面与编排引擎解耦，可单独启动或嵌入 admin。内部 AI 助手与 AI Kit 试跑面向后台运维 / 开发自用，并非对标豆包 / Kimi 的独立聊天产品。
+> **定位说明：** 本项目以 **LiteFlow 逻辑编排** 为骨架；AI 能力通过独立模块接入，可按需启用。MCP / Agent / 配置面与编排引擎解耦，可单独启动或嵌入 admin。内部 AI 助手与 AI Kit 试跑面向后台运维 / 开发自用，并非对标豆包 / Kimi 的独立聊天产品。
 
-版本说明见 [CHANGELOG.md](CHANGELOG.md)（当前里程碑 **v3.10.0**）。
+版本说明见 [CHANGELOG.md](CHANGELOG.md)。本仓库里程碑 **v3.10.0**（Maven / 若依基线仍为 **3.9.2**）。
 
 ---
 
@@ -72,10 +72,10 @@ AI 节点与普通 Java / 脚本节点可在同一条 EL 链路中混编，共�
 | **LangChain4j** | AiServices + Tool、OpenAI 兼容 ChatModel（DeepSeek 等） |
 | **LangGraph4j** | StateGraph 多步推理与条件边，封装为单 LiteFlow 节点 |
 | **RAG 问答** | 本地 All-MiniLM Embedding + 内存向量库，内置售后知识库 Demo |
-| **内部 AI 助手** | 后台多轮对话 + SSE，复用模型配置与配额 |
+| **内部 AI 助手** | 后台多轮对话 + SSE，复用模型管理与配额 |
 | **MCP Server** | AI Kit：系统能力封装为 Tools（ai-core / lf-governance），支持动态注册，HTTP Playground + 简化 stdio |
 | **独立多 Agent** | `ai-kit-boot` 单进程（Chat/Risk/RAG/Ops），经 MCP 调用，与 LiteFlow 解耦 |
-| **AI Kit 配置面** | admin「AI能力」：模型 / 工具 / 智能体 / 知识库 / 技能 / 记忆 / 上下文；`AgentRuntime` 配置驱动 |
+| **AI Kit 配置面** | admin「AI能力」：助手 / 模型 / 工具 / 智能体 / 知识库 / 技能 / 记忆 / 上下文；`AgentRuntime` 配置驱动 |
 
 ---
 
@@ -133,70 +133,57 @@ AI 节点与普通 Java / 脚本节点可在同一条 EL 链路中混编，共�
 flowchart TB
   subgraph UI["ruoyi-vue-liteflow-ui"]
     Editor[可视化编排 X6]
-    Chain[链路 / 脚本 / 组件]
-    Log[执行日志 / 监控 / 试跑洞察]
-    AiChat[内部 AI 助手]
+    Ops[链路 / 脚本 / 日志 / 监控]
+    AiUI[AI能力：助手 / 模型 / 智能体]
   end
 
-  subgraph Admin["ruoyi-vue-liteflow-admin"]
-    API["/liteflow/** REST"]
+  subgraph Admin["admin :8080"]
+    LFAPI["/liteflow/**"]
     OpenAPI["/liteflow/open/**"]
     ChatAPI["/liteflow/chat/** SSE"]
+    KitAPI["/aikit/**"]
   end
 
-  subgraph Core["ruoyi-vue-liteflow-liteflow"]
-    Svc[链路 CRUD / 执行 / 审计]
-    LF[LiteFlow FlowExecutor]
+  subgraph LF["liteflow + agent + langchain"]
+    Engine[FlowExecutor + EL]
+    Nodes[Re-Act / LC4j / Graph / RAG 节点]
   end
 
-  subgraph Agent["ruoyi-vue-liteflow-agent"]
-    ReAct[Re-Act Agent / Tools]
-    ModelCfg[模型配置 / 配额]
-  end
-
-  subgraph Lc["ruoyi-vue-liteflow-langchain"]
-    Chat[LangChain4j Chat + Tool]
-    Graph[LangGraph4j StateGraph]
-    Rag[RAG Embedding + 向量检索]
-    Assist[内部助手流式对话]
+  subgraph Kit["ai-kit/"]
+    Plat[platform 配置面]
+    Core[core AgentRuntime]
+    MCP["mcp :8090 可选"]
+    Boot["boot :8091 可选"]
   end
 
   subgraph Store["MySQL / Redis"]
-    ChainTbl[(lf_chain)]
-    ScriptTbl[(lf_script)]
-    LogTbl[(lf_exec_log)]
-    ModelTbl[(lf_agent_model)]
-    ChatTbl[(lf_chat_session / message)]
+    ChainTbl[(lf_chain / lf_script / lf_exec_log)]
+    ModelTbl[(ai_model)]
   end
 
-  UI --> API
-  UI --> OpenAPI
-  AiChat --> ChatAPI
-  API --> Svc
-  OpenAPI --> Svc
-  ChatAPI --> Assist
-  Svc --> LF
-  LF --> ReAct
-  LF --> Chat
-  LF --> Graph
-  LF --> Rag
-  LF --> ChainTbl
-  LF --> ScriptTbl
-  Svc --> LogTbl
-  ReAct --> ModelCfg
-  Chat --> ModelCfg
-  Graph --> ModelCfg
-  Rag --> ModelCfg
-  Assist --> ModelCfg
-  ModelCfg --> ModelTbl
-  Assist --> ChatTbl
+  Ops --> LFAPI
+  Ops --> OpenAPI
+  AiUI --> ChatAPI
+  AiUI --> KitAPI
+  LFAPI --> Engine
+  OpenAPI --> Engine
+  Engine --> Nodes
+  Engine --> ChainTbl
+  KitAPI --> Plat
+  Plat --> Core
+  Plat --> ModelTbl
+  ChatAPI --> Core
+  Nodes --> Core
+  MCP --> Core
+  Boot --> Core
 ```
 
 **分层约定：**
 
 - LiteFlow EL：外层业务编排（校验、分支、落库、通知）
 - AI 节点：内层智能能力（Re-Act / Chat+Tool / 状态图 / RAG）
-- 内部 AI 助手：独立会话 API，不走链路 EL，共用模型配置与配额
+- 内部 AI 助手：独立会话 API，不走链路 EL；可选绑定智能体或模型
+- AI Kit：`ai-kit/` 独立模块族，配置面嵌入 admin；日常不必启 MCP / boot
 - `lf_chain.el_data` 为执行权威；`graph_json` 为画布快照；发布后热刷新
 
 ---
@@ -238,24 +225,17 @@ flowchart TB
 
 ### 2. 初始化数据库
 
+```sql
+CREATE DATABASE IF NOT EXISTS `ry-vue` DEFAULT CHARACTER SET utf8mb4;
+```
+
 ```bash
 mysql -u root -p ry-vue < sql/ry-vue.sql
 ```
 
-全量脚本已包含若依基础表、LiteFlow 表、Demo 链路（含 Agent / LangChain / RAG / 决策路由）、**内部 AI 助手表**与菜单。修改 `ruoyi-vue-liteflow-admin/src/main/resources/application-druid.yml` 中的数据库与 Redis 连接。
+全量脚本已包含若依基础表、LiteFlow 表、Demo 链路（含 Agent / LangChain / RAG / 决策路由 / `aiKitAgentDemo`）、**AI Kit** 与 **AI 助手**。按本机修改 `ruoyi-vue-liteflow-admin/src/main/resources/application-druid.yml`（默认库 `ry-vue`，账号 `root` / `root`）。
 
-> **安全提示：** 生产环境请修改 `application.yml` 中 `liteflow.open-api.api-key` 默认值；模型 API Key 勿写入仓库，请用「模型配置」页或环境变量。
-
-若已有库仅需补齐 AI Demo，可按需执行增量脚本：
-
-| 脚本 | 内容 |
-|------|------|
-| [sql/phase5_langchain.sql](sql/phase5_langchain.sql) | `lc4jChatDemo` / `lc4jGraphDemo` |
-| [sql/phase5_rag.sql](sql/phase5_rag.sql) | `lc4jRagDemo` |
-| [sql/phase6_chat.sql](sql/phase6_chat.sql) | 内部 AI 助手表 + 菜单 |
-| [sql/phase8_ai_kit_platform.sql](sql/phase8_ai_kit_platform.sql) | Phase 8A：AI Kit 模型/工具/智能体 + 菜单 |
-| [sql/phase8b_ai_knowledge.sql](sql/phase8b_ai_knowledge.sql) | Phase 8B：知识库 + `aiKitAgentDemo`（依赖 phase8） |
-| [sql/phase8c_ai_kit_enhance.sql](sql/phase8c_ai_kit_enhance.sql) | Phase 8C：技能/记忆/上下文 + MCP 动态工具种子（依赖 phase8b） |
+> **安全提示：** 生产请改默认账号 `admin/admin123`、`liteflow.open-api.api-key`、`RUOYI_MCP_API_KEY`、AES `RUOYI_AI_AES_SECRET`。模型 API Key 勿写入仓库，用「AI能力 → 模型管理」或 `DEEPSEEK_API_KEY`。
 
 ### 3. 启动后端
 
@@ -278,7 +258,7 @@ npm run dev
 
 浏览器访问控制台提示地址，默认账号：**admin / admin123**。
 
-### 5. （可选）Phase 7：仅 AI Kit（MCP + Agent），不启 admin
+### 5. （可选）仅 AI Kit（MCP + Agent），不启 admin
 
 无需 MySQL。配置 `DEEPSEEK_API_KEY` 后，在 IDEA 运行：
 
@@ -291,8 +271,8 @@ npm run dev
 
 1. 登录 → **LiteFlow编排 → 链路管理**
 2. 对 `helloChain` 点击 **试跑**
-3. **模型配置** 录入 DeepSeek Key 并设为默认后，可依次试跑 `agentRiskDemo` / `lc4jChatDemo` / `lc4jGraphDemo` / `lc4jRagDemo`
-4. 打开 **AI助手**，进行多轮对话（复用同一默认模型）
+3. **AI能力 → 模型管理** 录入 DeepSeek Key 并设为默认后，可依次试跑 `agentRiskDemo` / `lc4jChatDemo` / `lc4jGraphDemo` / `lc4jRagDemo` / `aiKitAgentDemo`
+4. 打开 **AI能力 → AI助手**，进行多轮对话（复用同一默认模型）
 5. 点击 **编排** 打开可视化编辑器，拖拽组件并保存 / 发布
 
 ---
@@ -313,10 +293,11 @@ npm run dev
 | `lc4jChatDemo` | LangChain4j | AiServices + Tool 风控 |
 | `lc4jGraphDemo` | LangGraph4j | StateGraph 条件边风控 |
 | `lc4jRagDemo` | LangChain4j RAG | 售后知识库问答 |
+| `aiKitAgentDemo` | AI Kit 薄适配 | 配置驱动智能体节点 |
 
 样例请求 JSON：[docs/demo/](docs/demo/README.md)
 
-**Phase 7 独立进程（非链路 Demo）：** 无需启动 admin / 前端。MCP `:8090` + AI Kit Boot `:8091`（Chat/Risk/RAG/Ops 合一），浏览器打开各端口首页即可。详见 [docs/MCP_AGENT.md](docs/MCP_AGENT.md)、[docs/demo/agent/](docs/demo/agent/README.md)。
+**独立进程（非链路 Demo）：** 无需启动 admin / 前端。MCP `:8090` + AI Kit Boot `:8091`（Chat/Risk/RAG/Ops 合一），浏览器打开各端口首页即可。详见 [docs/MCP_AGENT.md](docs/MCP_AGENT.md)、[docs/demo/agent/](docs/demo/agent/README.md)。
 
 **决策路由试跑：** 链路管理 → **决策路由试跑**
 
@@ -338,7 +319,7 @@ npm run dev
 
 把 DeepSeek（OpenAI 兼容）封装为链路中的 Re-Act Agent 节点，可与普通组件混编。
 
-1. **LiteFlow编排 → 模型配置**：新增模型并设为默认；或设置环境变量 `DEEPSEEK_API_KEY`
+1. **AI能力 → 模型管理**：新增模型并设为默认；或设置环境变量 `DEEPSEEK_API_KEY`
 2. 试跑链路 `agentRiskDemo`
 
 开放 API 默认 **禁止** 含 Agent 类节点的链路（`liteflow.open-api.allow-agent-chains=false`）。详见 [docs/AGENT.md](docs/AGENT.md)。
@@ -361,17 +342,18 @@ RAG 默认知识库位于模块资源目录 `ruoyi-vue-liteflow-langchain/src/ma
 
 ### 3. 内部 AI 助手
 
-菜单 **LiteFlow编排 → AI助手**：后台多轮对话 + SSE 流式输出，复用「模型配置」默认模型与日配额。
+菜单 **AI能力 → AI助手**：后台多轮对话 + SSE 流式输出，复用「模型管理」默认模型与日配额。
 
 | 能力 | 说明 |
 |------|------|
 | 会话 | 仅本人可见，软删除；侧栏可折叠 |
-| 上下文 | 最近 N 条（默认 20） |
+| 选择器 | 新对话可选 **智能体** 或 **模型**；发出后本会话锁定 |
+| 上下文 | 轻量：最近 N 条；智能体：走 Kit 记忆 |
 | 交互 | 流式输出、停止生成、Markdown 渲染、复制 |
 
-已有库需执行 [sql/phase6_chat.sql](sql/phase6_chat.sql)。详见 [docs/CHAT.md](docs/CHAT.md)。
+详见 [docs/CHAT.md](docs/CHAT.md)。
 
-### 4. MCP Server + 独立多 Agent（Phase 7 / AI Kit）
+### 4. MCP Server + 独立多 Agent（AI Kit）
 
 将系统能力封装为 **MCP Tools**，再以 **AI Kit Boot** 单进程消费（**不依赖 LiteFlow EL**）：
 
@@ -383,22 +365,20 @@ RAG 默认知识库位于模块资源目录 `ruoyi-vue-liteflow-langchain/src/ma
 - 鉴权：`X-MCP-Api-Key`（默认 `ruoyi-mcp-key-change-me`，可用 `RUOYI_MCP_API_KEY`）
 - 模型：环境变量 `DEEPSEEK_API_KEY`
 - 与后台「AI助手」菜单：**并存**；菜单仍走 `/liteflow/chat`（8080），AI Kit 走 8090/8091
-- Maven 模块：`ai-kit-core` / `ai-kit-mcp` / `ai-kit-boot` / `ai-kit-platform`（可抽到其他项目复用）
+- Maven 模块：均在 `ai-kit/` 下（`ai-kit-core` / `mcp` / `boot` / `platform`，可抽到其他项目复用）
 
 详细说明：[docs/MCP_AGENT.md](docs/MCP_AGENT.md)
 
-### 5. AI Kit 配置面（Phase 8，嵌入 admin）
+### 5. AI Kit 配置面（嵌入 admin）
 
 日常使用 **`RuoYiApplication`（:8080）** 即可管理 AI Kit，无需单独启 boot：
 
-1. 按序执行 `phase8` → `phase8b` → `phase8c` 增量 SQL，**重新登录**后侧栏出现 **AI能力**
+1. 导入 [sql/ry-vue.sql](sql/ry-vue.sql) 后**重新登录**，侧栏出现 **AI能力**
 2. 菜单：模型 / 工具 / 智能体 / 知识库 / 技能 / 记忆 / 上下文策略
 3. 智能体支持绑定工具、知识库、技能与上下文策略；试跑走 `POST /aikit/agent/{code}/run`
 4. 配置 `DEEPSEEK_API_KEY`，或在「模型管理」写入加密 Key
 
-可选独立进程：`ai-kit-boot`（:8091，`platform` profile）配置驱动试跑；MCP（:8090）动态工具见 [docs/demo/aikit/](docs/demo/aikit/README.md)。
-
-完整说明：[docs/AI_KIT_PLATFORM.md](docs/AI_KIT_PLATFORM.md)
+可选独立进程：`ai-kit-boot`（:8091，`platform` profile）配置驱动试跑；MCP Playground 见 [docs/demo/mcp-ai-core/](docs/demo/mcp-ai-core/README.md)。
 
 ### 6. 可选配置
 
@@ -426,14 +406,12 @@ liteflow:
 
 | 文档 | 说明 |
 |------|------|
-| [docs/HOME.md](docs/HOME.md) | 文档索引入口 |
 | [docs/EDITOR.md](docs/EDITOR.md) | 可视化编排器使用指南 |
 | [docs/API.md](docs/API.md) | 内部 / 开放执行 API / Webhook |
 | [docs/AGENT.md](docs/AGENT.md) | Re-Act Agent（DeepSeek） |
 | [docs/LANGCHAIN.md](docs/LANGCHAIN.md) | LangChain4j / LangGraph4j / RAG |
 | [docs/CHAT.md](docs/CHAT.md) | 内部 AI 助手（多轮对话 + SSE） |
-| [docs/MCP_AGENT.md](docs/MCP_AGENT.md) | Phase 7：AI Kit（MCP + 独立 Agent） |
-| [docs/AI_KIT_PLATFORM.md](docs/AI_KIT_PLATFORM.md) | Phase 8：AI Kit 配置面（已落地 A/B/C） |
+| [docs/MCP_AGENT.md](docs/MCP_AGENT.md) | AI Kit：MCP + 独立 Agent + 配置面 |
 | [docs/demo/](docs/demo/README.md) | Demo 请求样例 |
 
 Swagger：启动后访问 `/swagger-ui.html`，分组 **LiteFlow编排** / **LiteFlow开放API**。
@@ -447,13 +425,14 @@ RuoYi-Vue-LiteFlow/
 ├── ruoyi-vue-liteflow-liteflow/   # LiteFlow 核心：组件、链路、执行、审计
 ├── ruoyi-vue-liteflow-agent/      # Re-Act Agent（DeepSeek）扩展模块
 ├── ruoyi-vue-liteflow-langchain/  # LangChain4j / LangGraph4j / RAG 扩展模块
-├── ruoyi-vue-liteflow-ai-kit-core/ # AI Kit Facade（无 LiteFlow，可复用）
-├── ruoyi-vue-liteflow-ai-kit-mcp/  # MCP Server :8090
-├── ruoyi-vue-liteflow-ai-kit-boot/ # Agent 示例合一进程 :8091
-├── ruoyi-vue-liteflow-ai-kit-platform/ # 模型/工具/智能体配置面（Phase 8）
+├── ai-kit/                        # AI Kit（与 LiteFlow 解耦）
+│   ├── ruoyi-vue-liteflow-ai-kit-core/      # Facade / AgentRuntime
+│   ├── ruoyi-vue-liteflow-ai-kit-platform/  # 模型/工具/智能体配置面
+│   ├── ruoyi-vue-liteflow-ai-kit-mcp/       # MCP Server :8090
+│   └── ruoyi-vue-liteflow-ai-kit-boot/      # Agent 示例合一进程 :8091
 ├── ruoyi-vue-liteflow-admin/      # Spring Boot 启动与 REST API
 ├── ruoyi-vue-liteflow-ui/         # Vue 管理前端（含 LiteFlowEditor）
-├── sql/                           # 初始化与增量 SQL
+├── sql/                           # 全量初始化 sql/ry-vue.sql
 ├── docs/                          # 用户文档与截图 docs/img/
 ├── docker/                        # Docker 构建文件
 └── docker-compose.yml             # 一键部署骨架
@@ -485,8 +464,8 @@ docker compose up -d --build
 | 规则审计 | EL 变更记录 |
 | 版本历史 | 快照、diff、回滚 |
 | 监控仪表盘 | 成功率与 Top 排行 |
-| 模型配置 | AI 模型与加密 API Key |
-| AI助手 | 内部多轮对话（SSE） |
+
+**AI能力** 模块：模型管理（统一 Key / 配额）、AI助手、工具 / 智能体 / 知识库 / 技能 / 记忆 / 上下文。
 
 ---
 
@@ -505,16 +484,16 @@ A：检查请求头 `X-LiteFlow-Api-Key` 或具备权限 `liteflow:open:execute`
 A：确认库中存在 `newCustomerPromo` / `returningCustomerPromo`（namespace=`routeDemo`）且已发布，并对链路 **热刷新** 或重启后端。
 
 **Q：Agent / LangChain / RAG / AI助手 失败？**  
-A：检查「模型配置」或 `DEEPSEEK_API_KEY`、账户余额，以及库中是否存在对应 Demo 链路 / `lf_chat_*` 表。RAG 首次启动需成功加载 Embedding；AI 助手需执行 [sql/phase6_chat.sql](sql/phase6_chat.sql) 并重新登录。详见 [docs/AGENT.md](docs/AGENT.md)、[docs/LANGCHAIN.md](docs/LANGCHAIN.md)、[docs/CHAT.md](docs/CHAT.md)。
+A：检查「AI能力 → 模型管理」或 `DEEPSEEK_API_KEY`、账户余额，以及是否已导入 [sql/ry-vue.sql](sql/ry-vue.sql)。RAG 首次启动需成功加载 Embedding。详见 [docs/AGENT.md](docs/AGENT.md)、[docs/LANGCHAIN.md](docs/LANGCHAIN.md)、[docs/CHAT.md](docs/CHAT.md)。
 
 **Q：内部 AI 助手和链路里的 Agent 有何区别？**  
-A：AI 助手是后台多轮聊天页（`/liteflow/chat`），不走 EL 链路；Agent / LangChain 节点挂在 `lf_chain` 上，与业务组件混编试跑。二者共用模型配置与配额。
+A：AI 助手是后台多轮聊天页（菜单在「AI能力」，接口 `/liteflow/chat`），不走 EL 链路；Agent / LangChain 节点挂在 `lf_chain` 上，与业务组件混编试跑。二者共用模型管理与配额。
 
 **Q：如何体验 MCP / 独立 Agent？需要开前端吗？**  
 A：不需要。配置 `DEEPSEEK_API_KEY` 后启动 `McpServerApplication`（8090）与 `AiKitBootApplication`（8091），浏览器访问对应首页即可。详见 [docs/MCP_AGENT.md](docs/MCP_AGENT.md)。
 
 **Q：如何只使用编排能力、不启用 AI？**  
-A：可不配置模型 Key；未执行 AI Demo 链路时不影响普通业务 Demo。亦可在 Maven 中不依赖 `ruoyi-vue-liteflow-langchain` / `ruoyi-vue-liteflow-agent`（需同步调整 admin 模块依赖）。Phase 7 的 `ai-kit-*` 模块也可不启动。
+A：可不配置模型 Key；未执行 AI Demo 链路时不影响普通业务 Demo。亦可在 Maven 中不依赖 `ruoyi-vue-liteflow-langchain` / `ruoyi-vue-liteflow-agent`（需同步调整 admin 模块依赖）。`ai-kit-*` 独立进程也可不启动。
 
 ---
 
@@ -531,7 +510,7 @@ A：可不配置模型 Key；未执行 AI Demo 链路时不影响普通业务 De
 - [LiteFlow AI Agent](https://liteflow.cc/) — Re-Act Agent 扩展
 - [LangChain4j](https://docs.langchain4j.info/) — Java LLM 应用框架
 - [LangGraph4j](https://github.com/langgraph4j/langgraph4j) — Java 有状态 Agent 图
-- [Model Context Protocol](https://modelcontextprotocol.io/) — Agent 工具协议（本仓库 Phase 7）
+- [Model Context Protocol](https://modelcontextprotocol.io/) — Agent 工具协议
 - [AntV X6](https://x6.antv.antgroup.com/) — 图编辑引擎
 - [DeepSeek](https://www.deepseek.com/) — 本仓库 Demo 默认模型供应商
 

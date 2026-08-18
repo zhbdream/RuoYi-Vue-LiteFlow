@@ -8,6 +8,13 @@ export function listChatSessions() {
   })
 }
 
+export function listChatOptions() {
+  return request({
+    url: '/liteflow/chat/options',
+    method: 'get'
+  })
+}
+
 export function createChatSession(data) {
   return request({
     url: '/liteflow/chat/session',
@@ -31,7 +38,7 @@ export function deleteChatSessions(ids) {
 }
 
 /**
- * 流式对话（SSE）。事件：delta / done / error
+ * 流式对话（SSE）。事件：delta / tool / done / error
  * @returns {{ abort: Function, done: Promise }}
  */
 export function chatStream(data, { onEvent, onDone, onError, signal } = {}) {

@@ -11,9 +11,9 @@
 
 ## 配置 Key（二选一）
 
-### 推荐：后台「模型配置」
+### 推荐：后台「模型管理」
 
-1. 登录 → **LiteFlow编排 → 模型配置**
+1. 登录 → **AI能力 → 模型管理**
 2. 新增 DeepSeek 模型，填写 API Key，勾选 **默认**
 3. Key AES 加密入库，接口只返回 `******（已配置）`
 
@@ -109,7 +109,7 @@ Accept: text/event-stream
 ## 安全说明
 
 - Shell / 工作区文件 Tool 默认关闭（`enableShellTool=false`）
-- API Key：后台模型配置 AES 加密入库；yml 仅作回退，勿提交 Git
+- API Key：后台「AI能力 → 模型管理」AES 加密入库；yml 仅作回退，勿提交 Git
 - 开放 API：默认 **禁止** 含 Agent 的链路（`liteflow.open-api.allow-agent-chains=false`）
 - 日配额：Redis 计数单用户调用/Token 与单链路调用（`liteflow.agent.quota.*`）
 - `GET /liteflow/config` 仅返回 `agentConfigured` 布尔值，不回传密钥

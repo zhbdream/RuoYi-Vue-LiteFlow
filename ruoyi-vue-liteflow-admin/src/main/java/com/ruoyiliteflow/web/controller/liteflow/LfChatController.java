@@ -1,6 +1,9 @@
 package com.ruoyiliteflow.web.controller.liteflow;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,6 +19,12 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+import com.ruoyiliteflow.agent.domain.LfAgentModel;
+import com.ruoyiliteflow.agent.service.ILfAgentModelService;
+import com.ruoyiliteflow.aikit.platform.domain.AiAgent;
+import com.ruoyiliteflow.aikit.platform.domain.AiModel;
+import com.ruoyiliteflow.aikit.platform.service.IAiAgentService;
+import com.ruoyiliteflow.aikit.platform.service.IAiModelService;
 import com.ruoyiliteflow.common.annotation.Log;
 import com.ruoyiliteflow.common.core.controller.BaseController;
 import com.ruoyiliteflow.common.core.domain.AjaxResult;
@@ -36,6 +45,25 @@ public class LfChatController extends BaseController
 
     @Autowired
     private ILfChatService lfChatService;
+
+    @Autowired
+    private ILfAgentModelService lfAgentModelService;
+
+    @Autowired(required = false)
+    private IAiModelService aiModelService;
+
+    @Autowired(required = false)
+    private IAiAgentService aiAgentService;
+
+    @PreAuthorize("@ss.hasPermi('liteflow:chat:list')")
+    @GetMapping("/options")
+    public AjaxResult options()
+    {
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("models", listModelOptions());
+        out.put("agents", listAgentOptions());
+        return success(out);
+    }
 
     @PreAuthorize("@ss.hasPermi('liteflow:chat:list')")
     @GetMapping("/session/list")
@@ -70,7 +98,7 @@ public class LfChatController extends BaseController
     }
 
     /**
-     * 流式对话。事件：delta / done / error
+     * 流式对话。事件：delta / tool / done / error
      */
     @PreAuthorize("@ss.hasPermi('liteflow:chat:send')")
     @PostMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
@@ -95,6 +123,8 @@ public class LfChatController extends BaseController
         String username = getUsername();
         Long sessionId = body.getSessionId();
         String content = body.getContent();
+        String modelCode = body.getModelCode();
+        String agentCode = body.getAgentCode();
         var authentication = SecurityContextHolder.getContext().getAuthentication();
 
         CompletableFuture.runAsync(() -> {
@@ -103,10 +133,18 @@ public class LfChatController extends BaseController
             SecurityContextHolder.setContext(context);
             try
             {
-                LfChatStreamEventVo done = lfChatService.streamChat(sessionId, content, username, event -> {
+                LfChatStreamEventVo done = lfChatService.streamChat(sessionId, content, username, modelCode, agentCode,
+                        event -> {
                     try
                     {
-                        emitter.send(SseEmitter.event().name("delta").data(event));
+                        if (event != null && event.getTool() != null)
+                        {
+                            emitter.send(SseEmitter.event().name("tool").data(event.getTool()));
+                        }
+                        else
+                        {
+                            emitter.send(SseEmitter.event().name("delta").data(event));
+                        }
                     }
                     catch (IOException ignored)
                     {
@@ -140,10 +178,63 @@ public class LfChatController extends BaseController
         return emitter;
     }
 
+    private List<Map<String, Object>> listModelOptions()
+    {
+        List<Map<String, Object>> models = new ArrayList<>();
+        if (aiModelService != null)
+        {
+            AiModel query = new AiModel();
+            query.setStatus("0");
+            for (AiModel m : aiModelService.selectAiModelList(query))
+            {
+                models.add(modelOption(m.getModelCode(), m.getModelName(), m.getModel(), "1".equals(m.getIsDefault())));
+            }
+            return models;
+        }
+        LfAgentModel query = new LfAgentModel();
+        query.setStatus("0");
+        for (LfAgentModel m : lfAgentModelService.selectLfAgentModelList(query))
+        {
+            models.add(modelOption(m.getModelCode(), m.getModelName(), m.getModel(), "1".equals(m.getIsDefault())));
+        }
+        return models;
+    }
+
+    private List<Map<String, Object>> listAgentOptions()
+    {
+        List<Map<String, Object>> agents = new ArrayList<>();
+        if (aiAgentService == null)
+        {
+            return agents;
+        }
+        AiAgent query = new AiAgent();
+        query.setEnabled("1");
+        for (AiAgent a : aiAgentService.selectAiAgentList(query))
+        {
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("agentCode", a.getAgentCode());
+            row.put("agentName", StringUtils.isNotEmpty(a.getAgentName()) ? a.getAgentName() : a.getAgentCode());
+            agents.add(row);
+        }
+        return agents;
+    }
+
+    private static Map<String, Object> modelOption(String code, String name, String model, boolean isDefault)
+    {
+        Map<String, Object> row = new LinkedHashMap<>();
+        row.put("modelCode", code);
+        row.put("modelName", StringUtils.isNotEmpty(name) ? name : model);
+        row.put("model", model);
+        row.put("isDefault", isDefault);
+        return row;
+    }
+
     public static class ChatStreamBody
     {
         private Long sessionId;
         private String content;
+        private String modelCode;
+        private String agentCode;
 
         public Long getSessionId()
         {
@@ -163,6 +254,26 @@ public class LfChatController extends BaseController
         public void setContent(String content)
         {
             this.content = content;
+        }
+
+        public String getModelCode()
+        {
+            return modelCode;
+        }
+
+        public void setModelCode(String modelCode)
+        {
+            this.modelCode = modelCode;
+        }
+
+        public String getAgentCode()
+        {
+            return agentCode;
+        }
+
+        public void setAgentCode(String agentCode)
+        {
+            this.agentCode = agentCode;
         }
     }
 }

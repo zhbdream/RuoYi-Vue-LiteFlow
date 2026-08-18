@@ -20,8 +20,10 @@ public interface ILfChatService
     int deleteSessions(Long[] ids, String username);
 
     /**
-     * 流式发送。delta 事件走 onDelta；完成时返回 done 载荷。
+     * 流式发送。delta / tool 事件走 onDelta；完成时返回 done 载荷。
+     * @param modelCode 可选，空则用默认模型；与 agentCode 二选一
+     * @param agentCode 可选，走 AI Kit 智能体（工具/知识库/技能）
      */
     LfChatStreamEventVo streamChat(Long sessionId, String content, String username,
-            Consumer<LfChatStreamEventVo> onDelta);
+            String modelCode, String agentCode, Consumer<LfChatStreamEventVo> onDelta);
 }

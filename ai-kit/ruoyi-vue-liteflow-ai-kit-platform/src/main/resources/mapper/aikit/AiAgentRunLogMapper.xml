@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyiliteflow.aikit.platform.mapper.AiAgentRunLogMapper">
+
+    <resultMap id="AiAgentRunLogResult" type="com.ruoyiliteflow.aikit.platform.domain.AiAgentRunLog">
+        <id     property="id"          column="id"/>
+        <result property="agentCode"   column="agent_code"/>
+        <result property="sessionId"   column="session_id"/>
+        <result property="principal"   column="principal"/>
+        <result property="model"       column="model"/>
+        <result property="costMs"      column="cost_ms"/>
+        <result property="kbHit"       column="kb_hit"/>
+        <result property="toolHit"     column="tool_hit"/>
+        <result property="toolTrace"   column="tool_trace"/>
+        <result property="errorMsg"    column="error_msg"/>
+        <result property="userMessage" column="user_message"/>
+        <result property="createTime"  column="create_time"/>
+    </resultMap>
+
+    <sql id="selectVo">
+        select id, agent_code, session_id, principal, model, cost_ms, kb_hit, tool_hit,
+               tool_trace, error_msg, user_message, create_time
+        from ai_agent_run_log
+    </sql>
+
+    <select id="selectAiAgentRunLogList" parameterType="com.ruoyiliteflow.aikit.platform.domain.AiAgentRunLog"
+            resultMap="AiAgentRunLogResult">
+        <include refid="selectVo"/>
+        <where>
+            <if test="agentCode != null and agentCode != ''">AND agent_code = #{agentCode}</if>
+            <if test="sessionId != null and sessionId != ''">AND session_id = #{sessionId}</if>
+            <if test="principal != null and principal != ''">AND principal = #{principal}</if>
+            <if test="kbHit != null and kbHit != ''">AND kb_hit = #{kbHit}</if>
+            <if test="toolHit != null and toolHit != ''">AND tool_hit = #{toolHit}</if>
+        </where>
+        order by id desc
+    </select>
+
+    <insert id="insertAiAgentRunLog" parameterType="com.ruoyiliteflow.aikit.platform.domain.AiAgentRunLog"
+            useGeneratedKeys="true" keyProperty="id">
+        insert into ai_agent_run_log (
+            agent_code, session_id, principal, model, cost_ms, kb_hit, tool_hit,
+            tool_trace, error_msg, user_message, create_time
+        ) values (
+            #{agentCode}, #{sessionId}, #{principal}, #{model}, #{costMs}, #{kbHit}, #{toolHit},
+            #{toolTrace}, #{errorMsg}, #{userMessage}, sysdate()
+        )
+    </insert>
+</mapper>

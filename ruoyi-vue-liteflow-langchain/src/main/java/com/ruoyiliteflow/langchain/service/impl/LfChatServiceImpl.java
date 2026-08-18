@@ -10,7 +10,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.ruoyiliteflow.agent.domain.LfAgentModel;
 import com.ruoyiliteflow.agent.service.IAgentQuotaService;
+import com.ruoyiliteflow.agent.service.ILfAgentModelService;
+import com.ruoyiliteflow.aicore.runtime.AgentRunRequest;
+import com.ruoyiliteflow.aicore.runtime.AgentRunResult;
+import com.ruoyiliteflow.aicore.runtime.AgentRuntime;
+import com.ruoyiliteflow.aicore.spi.AgentStreamListener;
 import com.ruoyiliteflow.common.exception.ServiceException;
 import com.ruoyiliteflow.common.utils.StringUtils;
 import com.ruoyiliteflow.langchain.domain.LfChatMessage;
@@ -48,6 +54,12 @@ public class LfChatServiceImpl implements ILfChatService
 
     @Autowired
     private IAgentQuotaService agentQuotaService;
+
+    @Autowired
+    private ILfAgentModelService lfAgentModelService;
+
+    @Autowired(required = false)
+    private AgentRuntime agentRuntime;
 
     @Value("${liteflow.chat.history-limit:20}")
     private int historyLimit;
@@ -104,27 +116,32 @@ public class LfChatServiceImpl implements ILfChatService
 
     @Override
     public LfChatStreamEventVo streamChat(Long sessionId, String content, String username,
-            Consumer<LfChatStreamEventVo> onDelta)
+            String modelCode, String agentCode, Consumer<LfChatStreamEventVo> onDelta)
     {
         if (StringUtils.isEmpty(content) || StringUtils.isEmpty(content.trim()))
         {
             throw new ServiceException("消息内容不能为空");
         }
         String userText = content.trim();
+        LfChatSession session = resolveOrCreateSession(sessionId, username, userText, modelCode, agentCode);
+        String pinnedAgent = session.getAgentCode();
+        if (StringUtils.isNotEmpty(pinnedAgent))
+        {
+            return streamViaAgent(session, userText, username, pinnedAgent, onDelta);
+        }
         agentQuotaService.assertWithinQuota(username, QUOTA_CHAIN);
+        String pinnedModel = session.getModelCode();
+        Lc4jModelCredential cred = chatModelFactory.resolveCredential(pinnedModel);
+        return streamViaModel(session, userText, username, cred, onDelta);
+    }
 
-        Lc4jModelCredential cred = chatModelFactory.resolveCredential();
-        LfChatSession session = resolveOrCreateSession(sessionId, username, userText, cred);
-
-        LfChatMessage userMsg = new LfChatMessage();
-        userMsg.setSessionId(session.getId());
-        userMsg.setRole(ROLE_USER);
-        userMsg.setContent(userText);
-        userMsg.setCreateBy(username);
-        messageMapper.insertLfChatMessage(userMsg);
+    private LfChatStreamEventVo streamViaModel(LfChatSession session, String userText, String username,
+            Lc4jModelCredential cred, Consumer<LfChatStreamEventVo> onDelta)
+    {
+        insertMessage(session.getId(), ROLE_USER, userText, username, null);
 
         List<ChatMessage> messages = buildModelMessages(session.getId());
-        StreamingChatModel model = chatModelFactory.createStreamingChatModel(temperature);
+        StreamingChatModel model = chatModelFactory.createStreamingChatModel(temperature, cred);
 
         StringBuilder full = new StringBuilder();
         CountDownLatch latch = new CountDownLatch(1);
@@ -162,19 +179,7 @@ public class LfChatServiceImpl implements ILfChatService
             }
         });
 
-        try
-        {
-            if (!latch.await(170, TimeUnit.SECONDS))
-            {
-                throw new ServiceException("模型响应超时，请稍后重试");
-            }
-        }
-        catch (InterruptedException e)
-        {
-            Thread.currentThread().interrupt();
-            throw new ServiceException("对话被中断");
-        }
-
+        awaitLatch(latch);
         if (errorRef.get() != null)
         {
             Throwable err = errorRef.get();
@@ -202,24 +207,120 @@ public class LfChatServiceImpl implements ILfChatService
             }
         }
 
-        LfChatMessage assistantMsg = new LfChatMessage();
-        assistantMsg.setSessionId(session.getId());
-        assistantMsg.setRole(ROLE_ASSISTANT);
-        assistantMsg.setContent(answer);
-        assistantMsg.setTokenCount(tokens);
-        assistantMsg.setCreateBy(username);
-        messageMapper.insertLfChatMessage(assistantMsg);
+        LfChatMessage assistantMsg = insertMessage(session.getId(), ROLE_ASSISTANT, answer, username, tokens);
+        String display = StringUtils.isNotEmpty(session.getModelName()) ? session.getModelName() : cred.getModelName();
+        touchSession(session, username);
+        agentQuotaService.recordUsage(username, QUOTA_CHAIN, tokens == null ? 0L : tokens.longValue());
+        return LfChatStreamEventVo.done(session.getId(), assistantMsg.getId(), answer, display, session.getTitle(),
+                null);
+    }
 
-        session.setModelCode(cred.getModelName());
-        session.setModelName(cred.getModelName());
+    private LfChatStreamEventVo streamViaAgent(LfChatSession session, String userText, String username,
+            String agentCode, Consumer<LfChatStreamEventVo> onDelta)
+    {
+        if (agentRuntime == null)
+        {
+            throw new ServiceException("智能体运行时未就绪，请确认已启用 AI Kit");
+        }
+        insertMessage(session.getId(), ROLE_USER, userText, username, null);
+
+        AgentRunRequest request = new AgentRunRequest();
+        request.setMessage(userText);
+        request.setPrincipal(username);
+        request.setSessionId("lf-chat-" + session.getId());
+
+        StringBuilder full = new StringBuilder();
+        List<Object> toolTrace = new ArrayList<>();
+        AgentRunResult result = agentRuntime.stream(agentCode, request, new AgentStreamListener()
+        {
+            @Override
+            public void onDelta(String token)
+            {
+                if (token == null || token.isEmpty())
+                {
+                    return;
+                }
+                full.append(token);
+                if (onDelta != null)
+                {
+                    onDelta.accept(LfChatStreamEventVo.delta(token));
+                }
+            }
+
+            @Override
+            public void onTool(Object trace)
+            {
+                if (trace != null)
+                {
+                    toolTrace.add(trace);
+                }
+                if (onDelta != null)
+                {
+                    onDelta.accept(LfChatStreamEventVo.toolEvent(trace));
+                }
+            }
+        });
+
+        String answer = full.toString();
+        if (StringUtils.isEmpty(answer) && result != null)
+        {
+            answer = result.getContent();
+        }
+        if (StringUtils.isEmpty(answer))
+        {
+            answer = "（智能体未返回内容）";
+        }
+
+        LfChatMessage assistantMsg = insertMessage(session.getId(), ROLE_ASSISTANT, answer, username, null);
+        String display = StringUtils.isNotEmpty(session.getModelName()) ? session.getModelName()
+                : (result != null && StringUtils.isNotEmpty(result.getModel()) ? result.getModel() : agentCode);
+        touchSession(session, username);
+        String model = result != null && StringUtils.isNotEmpty(result.getModel()) ? result.getModel() : display;
+        LfChatStreamEventVo done = LfChatStreamEventVo.done(session.getId(), assistantMsg.getId(), answer, model,
+                session.getTitle(), agentCode);
+        if (!toolTrace.isEmpty())
+        {
+            done.setTools(toolTrace);
+        }
+        else if (result != null && result.getToolTrace() != null && !result.getToolTrace().isEmpty())
+        {
+            done.setTools(result.getToolTrace());
+        }
+        return done;
+    }
+
+    private LfChatMessage insertMessage(Long sessionId, String role, String content, String username, Integer tokens)
+    {
+        LfChatMessage msg = new LfChatMessage();
+        msg.setSessionId(sessionId);
+        msg.setRole(role);
+        msg.setContent(content);
+        msg.setTokenCount(tokens);
+        msg.setCreateBy(username);
+        messageMapper.insertLfChatMessage(msg);
+        return msg;
+    }
+
+    private void touchSession(LfChatSession session, String username)
+    {
         session.setUpdateBy(username);
         sessionMapper.updateLfChatSession(session);
+    }
 
-        long tokenLong = tokens == null ? 0L : tokens.longValue();
-        agentQuotaService.recordUsage(username, QUOTA_CHAIN, tokenLong);
-
-        return LfChatStreamEventVo.done(session.getId(), assistantMsg.getId(), answer, cred.getModelName(),
-                session.getTitle());
+    private void awaitLatch(CountDownLatch latch)
+    {
+        try
+        {
+            if (!latch.await(170, TimeUnit.SECONDS))
+            {
+                throw new ServiceException("模型响应超时，请稍后重试");
+            }
+        }
+        catch (InterruptedException e)
+        {
+            Thread.currentThread().interrupt();
+            throw new ServiceException("对话被中断");
+        }
     }
 
     private List<ChatMessage> buildModelMessages(Long sessionId)
@@ -243,13 +344,12 @@ public class LfChatServiceImpl implements ILfChatService
     }
 
     private LfChatSession resolveOrCreateSession(Long sessionId, String username, String firstMessage,
-            Lc4jModelCredential cred)
+            String modelCode, String agentCode)
     {
         if (sessionId == null)
         {
             LfChatSession created = createSession(username, firstMessage);
-            created.setModelCode(cred.getModelName());
-            created.setModelName(cred.getModelName());
+            applyPick(created, modelCode, agentCode);
             sessionMapper.updateLfChatSession(created);
             return created;
         }
@@ -258,7 +358,41 @@ public class LfChatServiceImpl implements ILfChatService
         {
             session.setTitle(trimTitle(firstMessage));
         }
+        boolean pinned = StringUtils.isNotEmpty(session.getAgentCode()) || StringUtils.isNotEmpty(session.getModelCode());
+        if (!pinned)
+        {
+            applyPick(session, modelCode, agentCode);
+        }
         return session;
+    }
+
+    private void applyPick(LfChatSession session, String modelCode, String agentCode)
+    {
+        if (StringUtils.isNotEmpty(agentCode))
+        {
+            session.setAgentCode(agentCode.trim());
+            session.setModelName("智能体 · " + agentCode.trim());
+            session.setModelCode("");
+            return;
+        }
+        session.setAgentCode("");
+        if (StringUtils.isNotEmpty(modelCode))
+        {
+            session.setModelCode(modelCode.trim());
+            LfAgentModel model = lfAgentModelService.resolveRuntimeByCode(modelCode.trim());
+            String name = model == null ? modelCode.trim()
+                    : (StringUtils.isNotEmpty(model.getModelName()) ? model.getModelName() : model.getModel());
+            session.setModelName(name);
+        }
+        else
+        {
+            LfAgentModel def = lfAgentModelService.resolveRuntimeDefault();
+            if (def != null)
+            {
+                session.setModelCode(def.getModelCode());
+                session.setModelName(StringUtils.isNotEmpty(def.getModelName()) ? def.getModelName() : def.getModel());
+            }
+        }
     }
 
     private LfChatSession requireOwnedSession(Long sessionId, String username)

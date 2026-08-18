@@ -19,8 +19,17 @@ ruoyi:
     # 可选：保存 mcp 类型工具时推送到独立 MCP 内存注册表
     mcp:
       register-url: ${RUOYI_MCP_REGISTER_URL:http://127.0.0.1:8090/mcp/dynamic-tools}
+      base-url: ${RUOYI_MCP_BASE_URL:http://127.0.0.1:8090}
       api-key: ${RUOYI_MCP_API_KEY:ruoyi-mcp-key-change-me}
       api-key-header: X-MCP-Api-Key
+    memory:
+      # 0=不自动过期；>0 则定时清理早于 N 天的记忆
+      ttl-days: ${RUOYI_AI_MEMORY_TTL_DAYS:0}
+    embedding:
+      # 空=本地 All-MiniLM；同时配 base-url + api-key 则走远程 Embedding
+      base-url: ${RUOYI_AI_EMBEDDING_BASE_URL:}
+      api-key: ${RUOYI_AI_EMBEDDING_API_KEY:}
+      model: ${RUOYI_AI_EMBEDDING_MODEL:}
   ai:
     openai:
       api-key: ${DEEPSEEK_API_KEY:}
@@ -176,7 +185,7 @@ liteflow:
     header-name: X-LiteFlow-Api-Key
     # 含 Re-Act Agent 的链路默认禁止走开放 API（避免外部误调用产生 Token 费用）
     allow-agent-chains: false
-  # Re-Act Agent（DeepSeek / OpenAI 兼容）。优先用「模型配置」页加密 Key；yml 作回退。
+  # Re-Act Agent（DeepSeek / OpenAI 兼容）。优先用「AI能力 → 模型管理」加密 Key；yml 作回退。
   agent:
     workspace:
       root: ./data/liteflow-agent-workspaces
@@ -201,7 +210,7 @@ liteflow:
         base-url: ${DEEPSEEK_BASE_URL:https://api.deepseek.com/v1}
     demo:
       model: ${DEEPSEEK_MODEL:deepseek-chat}
-  # 内部 AI 助手（多轮对话，复用模型配置 + 配额）
+  # 内部 AI 助手（多轮对话，复用模型管理 + 配额）
   chat:
     history-limit: 20
     temperature: 0.3

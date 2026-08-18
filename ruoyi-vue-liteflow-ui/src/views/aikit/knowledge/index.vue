@@ -1,6 +1,6 @@
 <template>
   <div class="app-container">
-    <el-alert title="支持上传 txt/md；上传或重建索引后会切分并载入内存向量库，供绑定该知识库的智能体检索。" type="info" :closable="false" show-icon class="mb8" />
+    <el-alert title="支持上传 txt / md / pdf / docx。分片落库；进程启动后自动从分片重建内存索引。默认本地 All-MiniLM，可配远程 Embedding。" type="info" :closable="false" show-icon class="mb8" />
     <el-form :model="queryParams" ref="queryForm" size="small" :inline="true" v-show="showSearch">
       <el-form-item label="编码" prop="kbCode">
         <el-input v-model="queryParams.kbCode" clearable @keyup.enter.native="handleQuery" />
@@ -26,11 +26,12 @@
         </template>
       </el-table-column>
       <el-table-column label="描述" prop="description" min-width="160" :show-overflow-tooltip="true" />
-      <el-table-column label="操作" width="320" align="center">
+      <el-table-column label="操作" width="380" align="center">
         <template slot-scope="scope">
           <el-button size="mini" type="text" @click="openDocs(scope.row)" v-hasPermi="['aikit:knowledge:query']">文档</el-button>
           <el-button size="mini" type="text" @click="handleUpload(scope.row)" v-hasPermi="['aikit:knowledge:upload']">上传</el-button>
           <el-button size="mini" type="text" @click="handleReindex(scope.row)" v-hasPermi="['aikit:knowledge:reindex']">重建索引</el-button>
+          <el-button size="mini" type="text" @click="openSearch(scope.row)" v-hasPermi="['aikit:knowledge:query']">试检索</el-button>
           <el-button size="mini" type="text" @click="handleUpdate(scope.row)" v-hasPermi="['aikit:knowledge:edit']">编辑</el-button>
           <el-button size="mini" type="text" @click="handleDelete(scope.row)" v-hasPermi="['aikit:knowledge:remove']">删除</el-button>
         </template>
@@ -78,11 +79,30 @@
     </el-dialog>
 
     <el-dialog title="上传文档" :visible.sync="uploadOpen" width="480px" append-to-body>
-      <el-upload drag action="#" :http-request="doUpload" :show-file-list="false" accept=".txt,.md,.markdown">
+      <el-upload drag action="#" :http-request="doUpload" :show-file-list="false" accept=".txt,.md,.markdown,.pdf,.docx">
         <i class="el-icon-upload" />
         <div class="el-upload__text">将文件拖到此处，或<em>点击上传</em></div>
-        <div class="el-upload__tip" slot="tip">仅支持 txt / md</div>
+        <div class="el-upload__tip" slot="tip">支持 txt / md / pdf / docx</div>
       </el-upload>
+    </el-dialog>
+
+    <el-dialog title="试检索" :visible.sync="searchOpen" width="680px" append-to-body>
+      <el-form size="small" label-width="80px">
+        <el-form-item label="知识库">{{ searchForm.kbCode }}</el-form-item>
+        <el-form-item label="问题">
+          <el-input v-model="searchForm.query" type="textarea" :rows="2" placeholder="如：七天无理由怎么退？" />
+        </el-form-item>
+        <el-form-item>
+          <el-button type="primary" :loading="searchLoading" @click="doSearch">检 索</el-button>
+        </el-form-item>
+      </el-form>
+      <el-table :data="searchHits" size="small" max-height="320">
+        <el-table-column label="来源" prop="source" width="140" show-overflow-tooltip />
+        <el-table-column label="分数" prop="score" width="90">
+          <template slot-scope="scope">{{ Number(scope.row.score).toFixed(3) }}</template>
+        </el-table-column>
+        <el-table-column label="片段" prop="text" min-width="280" show-overflow-tooltip />
+      </el-table>
     </el-dialog>
   </div>
 </template>
@@ -90,7 +110,7 @@
 <script>
 import {
   listAiKnowledge, getAiKnowledge, addAiKnowledge, updateAiKnowledge, delAiKnowledge,
-  listAiKnowledgeDocs, uploadAiKnowledgeDoc, delAiKnowledgeDocs, reindexAiKnowledge
+  listAiKnowledgeDocs, uploadAiKnowledgeDoc, delAiKnowledgeDocs, reindexAiKnowledge, searchAiKnowledge
 } from '@/api/aikit/platform'
 
 export default {
@@ -111,7 +131,11 @@ export default {
       docsOpen: false,
       docs: [],
       currentKbId: null,
-      uploadOpen: false
+      uploadOpen: false,
+      searchOpen: false,
+      searchLoading: false,
+      searchHits: [],
+      searchForm: { kbCode: '', query: '七天无理由怎么退？' }
     }
   },
   created() {
@@ -200,6 +224,23 @@ export default {
         this.$modal.msgSuccess('完成，分片数=' + ((res.data && res.data.chunkCount) || 0))
         this.getList()
       }).catch(() => { this.$modal.closeLoading() })
+    },
+    openSearch(row) {
+      this.searchForm = { kbCode: row.kbCode, query: '七天无理由怎么退？' }
+      this.searchHits = []
+      this.searchOpen = true
+    },
+    doSearch() {
+      if (!this.searchForm.query) {
+        this.$modal.msgWarning('请输入问题')
+        return
+      }
+      this.searchLoading = true
+      searchAiKnowledge(this.searchForm.kbCode, { query: this.searchForm.query, maxResults: 5, minScore: 0.2 }).then(res => {
+        this.searchHits = res.data || []
+        this.searchLoading = false
+        if (!this.searchHits.length) this.$modal.msgWarning('无命中，可先重建索引或降低分数阈值')
+      }).catch(() => { this.searchLoading = false })
     }
   }
 }

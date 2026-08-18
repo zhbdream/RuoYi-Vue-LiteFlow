@@ -5,7 +5,7 @@
 ## 启动
 
 ```bash
-# 模块目录：ruoyi-vue-liteflow-ai-kit-mcp
+# 模块目录：ai-kit/ruoyi-vue-liteflow-ai-kit-mcp
 # IDEA：运行 com.ruoyiliteflow.mcp.McpServerApplication
 # 需设置 DEEPSEEK_API_KEY
 ```
@@ -13,8 +13,8 @@
 stdio：
 
 ```bash
-mvn -pl ruoyi-vue-liteflow-ai-kit-mcp -am package -DskipTests
-java -cp ruoyi-vue-liteflow-ai-kit-mcp/target/ruoyi-vue-liteflow-ai-kit-mcp-3.9.2.jar \
+mvn -pl :ruoyi-vue-liteflow-ai-kit-mcp -am package -DskipTests
+java -cp ai-kit/ruoyi-vue-liteflow-ai-kit-mcp/target/ruoyi-vue-liteflow-ai-kit-mcp-3.9.2.jar \
   com.ruoyiliteflow.mcp.stdio.McpStdioLauncher
 ```
 

@@ -71,6 +71,6 @@ Authorization: Bearer <token>
 
 **降级 Demo 说明：** 需 `liteflow.fallback-cmp-enable=true`。EL 为 `THEN(declareHello, node("ghostNode"), declareBye)`，`ghostNode` 不存在时走 `fallbackCommon`。
 
-**LangChain Demo 说明：** 见 [LANGCHAIN.md](../LANGCHAIN.md)。Key 与 Demo7 共用「模型配置」/ `DEEPSEEK_API_KEY`。已有库执行 [sql/phase5_langchain.sql](../sql/phase5_langchain.sql)。
+**LangChain Demo 说明：** 见 [LANGCHAIN.md](../LANGCHAIN.md)。Key 与 Demo7 共用「AI能力 → 模型管理」/ `DEEPSEEK_API_KEY`。链路已包含在 [sql/ry-vue.sql](../../sql/ry-vue.sql)。
 
 详细说明见项目 [README Demo 矩阵](../README.md#demo-矩阵)。

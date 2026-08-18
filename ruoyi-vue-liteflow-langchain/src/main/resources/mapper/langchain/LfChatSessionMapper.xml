@@ -10,6 +10,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="userName"   column="user_name" />
         <result property="modelCode"  column="model_code" />
         <result property="modelName"  column="model_name" />
+        <result property="agentCode"  column="agent_code" />
         <result property="status"     column="status" />
         <result property="createBy"   column="create_by" />
         <result property="createTime" column="create_time" />
@@ -19,7 +20,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     </resultMap>
 
     <sql id="selectVo">
-        select id, title, user_name, model_code, model_name, status,
+        select id, title, user_name, model_code, model_name, agent_code, status,
                create_by, create_time, update_by, update_time, remark
         from lf_chat_session
     </sql>
@@ -40,10 +41,10 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 
     <insert id="insertLfChatSession" parameterType="com.ruoyiliteflow.langchain.domain.LfChatSession" useGeneratedKeys="true" keyProperty="id">
         insert into lf_chat_session (
-            title, user_name, model_code, model_name, status,
+            title, user_name, model_code, model_name, agent_code, status,
             create_by, create_time, update_by, update_time, remark
         ) values (
-            #{title}, #{userName}, #{modelCode}, #{modelName}, #{status},
+            #{title}, #{userName}, #{modelCode}, #{modelName}, #{agentCode}, #{status},
             #{createBy}, sysdate(), #{updateBy}, sysdate(), #{remark}
         )
     </insert>
@@ -54,6 +55,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="title != null">title = #{title},</if>
             <if test="modelCode != null">model_code = #{modelCode},</if>
             <if test="modelName != null">model_name = #{modelName},</if>
+            <if test="agentCode != null">agent_code = #{agentCode},</if>
             <if test="status != null">status = #{status},</if>
             <if test="updateBy != null">update_by = #{updateBy},</if>
             update_time = sysdate(),

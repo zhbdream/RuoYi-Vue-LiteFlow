@@ -20,6 +20,9 @@ public class LfChatSession extends BaseEntity
 
     private String modelName;
 
+    /** 绑定的智能体编码；空表示轻量模型对话 */
+    private String agentCode;
+
     /** 0正常 1删除 */
     private String status;
 
@@ -71,6 +74,16 @@ public class LfChatSession extends BaseEntity
     public void setModelName(String modelName)
     {
         this.modelName = modelName;
+    }
+
+    public String getAgentCode()
+    {
+        return agentCode;
+    }
+
+    public void setAgentCode(String agentCode)
+    {
+        this.agentCode = agentCode;
     }
 
     public String getStatus()

@@ -16,7 +16,7 @@
 - **管理端菜单「AI能力」**：模型、工具、智能体、知识库、技能、记忆、上下文策略
 - **LiteFlow 薄适配**：`aiKitAgentPrepare` / `aiKitAgent`，Demo 链路 `aiKitAgentDemo`
 - **MCP 动态 Tool**：内存注册 API、可选 JDBC `profile=dynamic`、admin 保存 mcp 工具时推送
-- **SQL**：`phase8_ai_kit_platform.sql` → `phase8b_ai_knowledge.sql` → `phase8c_ai_kit_enhance.sql`
+- **SQL**：表结构已并入 [sql/ry-vue.sql](sql/ry-vue.sql)
 
 #### 变更
 
@@ -25,12 +25,12 @@
 
 #### 文档
 
-- [docs/AI_KIT_PLATFORM.md](docs/AI_KIT_PLATFORM.md)
-- [docs/demo/aikit/README.md](docs/demo/aikit/README.md)
+- [docs/MCP_AGENT.md](docs/MCP_AGENT.md)
+- [docs/CHAT.md](docs/CHAT.md)
 
 #### 升级提示
 
-1. 已有库依次执行 phase8 / phase8b / phase8c，重新登录刷新菜单  
+1. 全新安装导入 [sql/ry-vue.sql](sql/ry-vue.sql)，重新登录刷新菜单  
 2. 配置 `DEEPSEEK_API_KEY` 或在「模型管理」写入 Key  
 3. 日常使用 admin `:8080`；MCP `:8090`、boot `:8091` 可选  
 

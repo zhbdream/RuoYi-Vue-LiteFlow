@@ -54,7 +54,7 @@
           >
             <div class="session-item__title" :title="item.title">{{ item.title || '新对话' }}</div>
             <div class="session-item__meta">
-              <el-tag size="mini" type="info" effect="plain">{{ item.modelName || item.modelCode || '默认模型' }}</el-tag>
+              <el-tag size="mini" type="info" effect="plain">{{ sessionTag(item) }}</el-tag>
               <span class="session-time">{{ formatSessionTime(item.updateTime || item.createTime) }}</span>
               <i
                 class="el-icon-delete"
@@ -74,9 +74,11 @@
 
       <!-- 主对话区 -->
       <section class="chat-main">
-        <div class="chat-main__tip">
-          <i class="el-icon-info" />
-          <span>复用「模型配置」默认模型与日配额 · 对话仅本人可见 · 请先配置 API Key</span>
+        <div class="chat-session-bar">
+          <span class="session-kind">{{ currentSessionId ? '本会话' : '新对话' }}</span>
+          <span class="session-dot">·</span>
+          <span class="session-pick">{{ sessionBarPick }}</span>
+          <el-tag v-if="sessionLocked" size="mini" type="info" effect="plain">已锁定</el-tag>
         </div>
 
         <div ref="messageBox" class="chat-messages">
@@ -84,10 +86,10 @@
             <div v-if="!messages.length && !sending" class="chat-welcome">
               <div class="welcome-badge">LiteFlow</div>
               <h2>有什么可以帮你？</h2>
-              <p>编排规则、链路试跑、模型配置与平台使用问题，都可以问我。</p>
+              <p>编排规则、链路试跑、模型与平台使用问题，都可以问我。</p>
               <div class="chat-suggestions">
                 <button
-                  v-for="tip in suggestions"
+                  v-for="tip in suggestionTips"
                   :key="tip"
                   type="button"
                   class="suggest-card"
@@ -111,7 +113,7 @@
               </div>
               <div class="msg-body">
                 <div class="msg-meta">
-                  <span class="msg-role-label">{{ msg.role === 'assistant' ? 'AI 助手' : '我' }}</span>
+                  <span class="msg-role-label">{{ msg.role === 'assistant' ? assistantLabel : '我' }}</span>
                   <span v-if="formatMsgTime(msg)" class="msg-time">{{ formatMsgTime(msg) }}</span>
                   <span v-if="msg.stopped" class="msg-stopped">已停止</span>
                 </div>
@@ -123,6 +125,15 @@
                   />
                   <div v-else class="msg-text">{{ msg.content }}</div>
                   <span v-if="msg.streaming" class="typing-cursor" />
+                </div>
+                <div v-if="msg.role === 'assistant' && msg.tools && msg.tools.length" class="msg-tools">
+                  <el-tag
+                    v-for="(t, ti) in msg.tools"
+                    :key="ti"
+                    size="mini"
+                    :type="toolOk(t) ? 'success' : 'danger'"
+                    effect="plain"
+                  >{{ toolChip(t) }}</el-tag>
                 </div>
                 <div v-if="msg.role === 'assistant' && !msg.streaming && msg.content" class="msg-actions">
                   <el-button type="text" size="mini" icon="el-icon-document-copy" @click="copyText(msg.content)">复制</el-button>
@@ -145,9 +156,39 @@
             />
             <div class="composer-bar">
               <div class="composer-meta">
-                <el-tag size="mini" effect="plain" type="success">
-                  <i class="el-icon-connection" /> {{ modelHint }}
-                </el-tag>
+                <el-select
+                  v-model="selectedAgentCode"
+                  size="mini"
+                  class="pick-select"
+                  placeholder="智能体"
+                  :disabled="sessionLocked || sending"
+                  @change="onAgentChange"
+                >
+                  <el-option label="不使用智能体" value="" />
+                  <el-option
+                    v-for="a in agents"
+                    :key="a.agentCode"
+                    :label="a.agentName"
+                    :value="a.agentCode"
+                  />
+                </el-select>
+                <el-select
+                  v-if="!selectedAgentCode"
+                  v-model="selectedModelCode"
+                  size="mini"
+                  class="pick-select"
+                  placeholder="模型"
+                  :disabled="sessionLocked || sending"
+                  @change="persistPick"
+                >
+                  <el-option label="默认模型" value="" />
+                  <el-option
+                    v-for="m in models"
+                    :key="m.modelCode"
+                    :label="m.modelName + (m.isDefault ? '（默认）' : '')"
+                    :value="m.modelCode"
+                  />
+                </el-select>
                 <span v-if="sending" class="sending-hint">
                   <i class="el-icon-loading" /> 生成中…
                 </span>
@@ -184,10 +225,12 @@ import {
   listChatSessions,
   listChatMessages,
   deleteChatSessions,
+  listChatOptions,
   chatStream
 } from '@/api/liteflow/chat'
 
 const SIDEBAR_KEY = 'lf-chat-sidebar-collapsed'
+const PICK_KEY = 'lf-chat-pick'
 
 export default {
   name: 'LiteFlowChat',
@@ -201,8 +244,12 @@ export default {
       sending: false,
       sidebarCollapsed: localStorage.getItem(SIDEBAR_KEY) === '1',
       streamCtl: null,
-      modelHint: '使用「模型配置」默认模型',
-      suggestions: [
+      modelHint: '默认模型',
+      models: [],
+      agents: [],
+      selectedModelCode: '',
+      selectedAgentCode: '',
+      defaultSuggestions: [
         'LiteFlow THEN 和 WHEN 有什么区别？',
         '如何配置 DeepSeek 模型 Key？',
         '链路试跑失败怎么排查？'
@@ -210,7 +257,50 @@ export default {
     }
   },
   created() {
+    this.restorePick()
+    this.applyRouteAgent()
+    this.loadOptions()
     this.loadSessions()
+  },
+  activated() {
+    this.applyRouteAgent()
+  },
+  watch: {
+    '$route.query': {
+      handler() {
+        this.applyRouteAgent()
+      },
+      deep: true
+    }
+  },
+  computed: {
+    sessionLocked() {
+      return this.messages.length > 0
+    },
+    sessionBarPick() {
+      if (this.selectedAgentCode) {
+        const a = this.agents.find(x => x.agentCode === this.selectedAgentCode)
+        return a ? a.agentName : this.selectedAgentCode
+      }
+      if (this.selectedModelCode) {
+        const m = this.models.find(x => x.modelCode === this.selectedModelCode)
+        return m ? m.modelName : this.selectedModelCode
+      }
+      return '默认模型'
+    },
+    assistantLabel() {
+      if (this.selectedAgentCode) {
+        const a = this.agents.find(x => x.agentCode === this.selectedAgentCode)
+        return a ? a.agentName : '智能体'
+      }
+      return 'AI 助手'
+    },
+    suggestionTips() {
+      if (this.selectedAgentCode === 'ops') {
+        return ['查看中台运行概览', '列出当前链路', '最近执行失败有哪些']
+      }
+      return this.defaultSuggestions
+    }
   },
   beforeDestroy() {
     this.handleStop(true)
@@ -300,13 +390,90 @@ export default {
         this.sessionLoading = false
       })
     },
+    loadOptions() {
+      listChatOptions().then(res => {
+        const d = res.data || {}
+        this.models = d.models || []
+        this.agents = d.agents || []
+      }).catch(() => {})
+    },
+    restorePick() {
+      try {
+        const raw = localStorage.getItem(PICK_KEY)
+        if (!raw) return
+        const p = JSON.parse(raw)
+        this.selectedAgentCode = p.agentCode || ''
+        this.selectedModelCode = p.modelCode || ''
+      } catch (e) { /* ignore */ }
+    },
+    applyRouteAgent() {
+      const q = (this.$route && this.$route.query) || {}
+      const code = q.agent
+      if (!code) return
+      const stamp = String(q.t || code)
+      if (this._routeStamp === stamp) return
+      this._routeStamp = stamp
+      if (this.sending) {
+        this.handleStop(true)
+      }
+      this.currentSessionId = null
+      this.messages = []
+      this.selectedAgentCode = String(code)
+      this.selectedModelCode = ''
+      this.persistPick()
+      this.modelHint = this.pickHint()
+    },
+    toolOk(t) {
+      if (!t) return false
+      if (t.ok === false) return false
+      if (t.ok === true) return true
+      const r = String(t.result || '')
+      return !(/"ok"\s*:\s*false/.test(r) || r.indexOf('失败') >= 0 || r.indexOf('Connection refused') >= 0)
+    },
+    toolChip(t) {
+      const name = (t && (t.tool || t.skill)) || '工具'
+      const ms = t && t.costMs != null ? (' · ' + t.costMs + 'ms') : ''
+      return (this.toolOk(t) ? '已调用 ' : '调用失败 ') + name + ms
+    },
+    persistPick() {
+      localStorage.setItem(PICK_KEY, JSON.stringify({
+        agentCode: this.selectedAgentCode || '',
+        modelCode: this.selectedModelCode || ''
+      }))
+    },
+    onAgentChange() {
+      if (this.selectedAgentCode) {
+        this.selectedModelCode = ''
+      }
+      this.persistPick()
+    },
+    sessionTag(item) {
+      if (!item) return '默认模型'
+      if (item.agentCode) {
+        const a = this.agents.find(x => x.agentCode === item.agentCode)
+        return a ? ('智能体 · ' + a.agentName) : (item.modelName || item.agentCode)
+      }
+      return item.modelName || item.modelCode || '默认模型'
+    },
+    pickHint() {
+      if (this.selectedAgentCode) {
+        const a = this.agents.find(x => x.agentCode === this.selectedAgentCode)
+        return a ? ('智能体 · ' + a.agentName) : this.selectedAgentCode
+      }
+      if (this.selectedModelCode) {
+        const m = this.models.find(x => x.modelCode === this.selectedModelCode)
+        return m ? m.modelName : this.selectedModelCode
+      }
+      return '默认模型'
+    },
     handleNewSession() {
       if (this.sending) {
         this.handleStop()
       }
       this.currentSessionId = null
       this.messages = []
-      this.modelHint = '使用「模型配置」默认模型'
+      this.restorePick()
+      this.modelHint = this.pickHint()
       this.$nextTick(() => this.scrollBottom())
     },
     selectSession(item) {
@@ -315,7 +482,9 @@ export default {
         return
       }
       this.currentSessionId = item.id
-      this.modelHint = item.modelName || item.modelCode || '使用「模型配置」默认模型'
+      this.selectedAgentCode = item.agentCode || ''
+      this.selectedModelCode = this.selectedAgentCode ? '' : (item.modelCode || '')
+      this.modelHint = this.sessionTag(item)
       listChatMessages(item.id).then(res => {
         this.messages = res.data || []
         this.$nextTick(() => this.scrollBottom())
@@ -372,18 +541,27 @@ export default {
       this.sending = true
       this.input = ''
       this.messages.push({ role: 'user', content, _localTime: now })
-      const assistant = { role: 'assistant', content: '', streaming: true, _localTime: now }
+      const assistant = { role: 'assistant', content: '', streaming: true, tools: [], _localTime: now }
       this.messages.push(assistant)
       this.$nextTick(() => this.scrollBottom())
 
       this.streamCtl = chatStream(
-        { sessionId: this.currentSessionId, content },
+        {
+          sessionId: this.currentSessionId,
+          content,
+          agentCode: this.selectedAgentCode || undefined,
+          modelCode: this.selectedAgentCode ? undefined : (this.selectedModelCode || undefined)
+        },
         {
           onEvent: ({ type, payload }) => {
             if (type === 'delta' && payload && payload.text) {
               assistant.content += payload.text
               this.$forceUpdate()
               this.$nextTick(() => this.scrollBottom())
+            } else if (type === 'tool' && payload) {
+              if (!assistant.tools) assistant.tools = []
+              assistant.tools.push(payload)
+              this.$forceUpdate()
             }
           },
           onDone: (payload) => {
@@ -392,9 +570,16 @@ export default {
               assistant.id = payload.messageId
               assistant.createTime = payload.createTime || assistant._localTime
               this.currentSessionId = payload.sessionId || this.currentSessionId
+              if (payload.agentCode) {
+                this.selectedAgentCode = payload.agentCode
+              }
               if (payload.model) {
                 this.modelHint = payload.model
               }
+              if (payload.tools && payload.tools.length && !(assistant.tools && assistant.tools.length)) {
+                assistant.tools = payload.tools
+              }
+              this.persistPick()
             }
             assistant.streaming = false
             this.sending = false
@@ -641,18 +826,24 @@ export default {
   flex-direction: column;
   background: #fafbfc;
 }
-.chat-main__tip {
+.chat-session-bar {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 8px 20px;
-  font-size: 12px;
-  color: #6b7785;
-  background: #f0f5ff;
-  border-bottom: 1px solid #e4ecf8;
+  gap: 8px;
+  padding: 10px 20px;
+  font-size: 13px;
+  background: #fff;
+  border-bottom: 1px solid #eef1f6;
 }
-.chat-main__tip i {
-  color: #409eff;
+.session-kind {
+  color: #8a94a6;
+}
+.session-dot {
+  color: #c0c4cc;
+}
+.session-pick {
+  font-weight: 600;
+  color: #1f2a37;
 }
 .chat-messages {
   flex: 1;
@@ -805,6 +996,12 @@ export default {
 .msg-bubble.streaming {
   min-width: 72px;
 }
+.msg-tools {
+  margin-top: 6px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
 .msg-text {
   white-space: pre-wrap;
   word-break: break-word;
@@ -918,8 +1115,12 @@ export default {
 .composer-meta {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   min-width: 0;
+  flex-wrap: wrap;
+}
+.pick-select {
+  width: 148px;
 }
 .composer-meta .el-tag {
   max-width: 280px;
