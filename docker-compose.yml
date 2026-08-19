@@ -1,4 +1,7 @@
-version: '3.8'
+version: "3.8"
+
+# 一键：docker compose up -d --build
+# 首次会自动导入 sql/ry-vue.sql（仅空数据卷）。重建库：docker compose down -v
 
 services:
   mysql:
@@ -12,13 +15,15 @@ services:
       - "3306:3306"
     volumes:
       - ./docker/mysql/init:/docker-entrypoint-initdb.d
+      - ./sql/ry-vue.sql:/docker-entrypoint-initdb.d/01-ry-vue.sql:ro
       - mysql_data:/var/lib/mysql
     command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot"]
       interval: 10s
       timeout: 5s
-      retries: 10
+      retries: 20
+      start_period: 30s
 
   redis:
     image: redis:7-alpine
@@ -27,6 +32,11 @@ services:
       - "6379:6379"
     volumes:
       - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
 
   backend:
     build:
@@ -37,15 +47,32 @@ services:
       mysql:
         condition: service_healthy
       redis:
-        condition: service_started
+        condition: service_healthy
     environment:
+      TZ: Asia/Shanghai
+      JAVA_OPTS: ${JAVA_OPTS:--Xms256m -Xmx1024m}
+      # 覆盖 jar 内 Windows 默认上传目录
+      RUOYI_PROFILE: /home/ruoyi/uploadPath
       SPRING_DATASOURCE_DRUID_MASTER_URL: jdbc:mysql://mysql:3306/ry-vue?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=false&serverTimezone=GMT%2B8&allowPublicKeyRetrieval=true
       SPRING_DATASOURCE_DRUID_MASTER_USERNAME: root
       SPRING_DATASOURCE_DRUID_MASTER_PASSWORD: root
       SPRING_DATA_REDIS_HOST: redis
-      SPRING_DATA_REDIS_PORT: 6379
+      SPRING_DATA_REDIS_PORT: "6379"
+      # 可选：AI Demo / 助手；不配也能登录与跑非 AI 链路
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+      DEEPSEEK_BASE_URL: ${DEEPSEEK_BASE_URL:-https://api.deepseek.com/v1}
+      DEEPSEEK_MODEL: ${DEEPSEEK_MODEL:-deepseek-chat}
     ports:
       - "8080:8080"
+    volumes:
+      - backend_upload:/home/ruoyi/uploadPath
+    # 启动含 RAG Embedding 时可能较慢；仅作状态展示，前端不阻塞等待
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/127.0.0.1/8080'"]
+      interval: 20s
+      timeout: 5s
+      retries: 30
+      start_period: 180s
 
   frontend:
     build:
@@ -54,9 +81,11 @@ services:
     container_name: ruoyi-liteflow-frontend
     depends_on:
       - backend
+    # 宝塔若已占用 80，可改为 "8088:80"
     ports:
       - "80:80"
 
 volumes:
   mysql_data:
   redis_data:
+  backend_upload:

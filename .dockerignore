@@ -1,0 +1,10 @@
+# 加速构建：排除无关目录（勿忽略前端 .env.*，build:prod 需要 VUE_APP_BASE_API）
+.git
+.idea
+.vscode
+**/target
+**/node_modules
+**/dist
+docs/img
+data
+.env

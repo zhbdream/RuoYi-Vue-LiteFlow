@@ -31,6 +31,7 @@
         <div class="form-header">
           <h3 class="form-title">欢迎登录</h3>
           <p class="form-subtitle">业务编排中台管理后台</p>
+          <p class="form-hint">默认账号 admin / admin123。数据库或 Redis 未就绪时无法登录；AI 试跑 / 助手需配置 DEEPSEEK_API_KEY 或「AI能力 → 模型管理」。</p>
         </div>
 
         <el-form-item prop="username">
@@ -367,6 +368,13 @@ export default {
   margin: 0;
   font-size: 14px;
   color: #909399;
+}
+
+.form-hint {
+  margin: 10px 0 0;
+  font-size: 12px;
+  line-height: 1.55;
+  color: #a8abb2;
 }
 
 .login-options {

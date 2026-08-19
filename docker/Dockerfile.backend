@@ -2,21 +2,17 @@
 
 FROM maven:3.9-eclipse-temurin-17 AS build
 WORKDIR /app
-COPY pom.xml .
-COPY ruoyi-vue-liteflow-admin/pom.xml ruoyi-vue-liteflow-admin/
-COPY ruoyi-vue-liteflow-common/pom.xml ruoyi-vue-liteflow-common/
-COPY ruoyi-vue-liteflow-framework/pom.xml ruoyi-vue-liteflow-framework/
-COPY ruoyi-vue-liteflow-generator/pom.xml ruoyi-vue-liteflow-generator/
-COPY ruoyi-vue-liteflow-liteflow/pom.xml ruoyi-vue-liteflow-liteflow/
-COPY ruoyi-vue-liteflow-quartz/pom.xml ruoyi-vue-liteflow-quartz/
-COPY ruoyi-vue-liteflow-system/pom.xml ruoyi-vue-liteflow-system/
-RUN mvn -pl ruoyi-vue-liteflow-admin -am dependency:go-offline -DskipTests
 
+COPY docker/maven-settings.xml /root/.m2/settings.xml
+# 完整源码（含 ai-kit/ 聚合模块）；-am 会解析 admin 全部依赖
 COPY . .
-RUN mvn -pl ruoyi-vue-liteflow-admin -am package -DskipTests
+RUN mvn -pl ruoyi-vue-liteflow-admin -am package -DskipTests \
+    && cp ruoyi-vue-liteflow-admin/target/ruoyi-vue-liteflow-admin.jar /app/app.jar
 
 FROM eclipse-temurin:17-jre
 WORKDIR /app
-COPY --from=build /app/ruoyi-vue-liteflow-admin/target/ruoyi-vue-liteflow-admin.jar app.jar
+RUN mkdir -p /home/ruoyi/uploadPath
+COPY --from=build /app/app.jar app.jar
+ENV JAVA_OPTS="-Xms256m -Xmx1024m"
 EXPOSE 8080
-ENTRYPOINT ["java", "-jar", "app.jar"]
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]

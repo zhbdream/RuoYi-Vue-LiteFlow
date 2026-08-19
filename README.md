@@ -435,18 +435,51 @@ RuoYi-Vue-LiteFlow/
 ├── sql/                           # 全量初始化 sql/ry-vue.sql
 ├── docs/                          # 用户文档与截图 docs/img/
 ├── docker/                        # Docker 构建文件
-└── docker-compose.yml             # 一键部署骨架
+└── docker-compose.yml             # 一键部署（自动导入 sql/ry-vue.sql）
 ```
 
 ---
 
 ## Docker（可选）
 
+空机器（已装 Docker）可一键起 MySQL、Redis、后端、前端。**首次**启动会自动导入 [`sql/ry-vue.sql`](sql/ry-vue.sql)，无需再手动 `cp`。
+
 ```bash
+# 可选：AI Demo / 助手
+# export DEEPSEEK_API_KEY=sk-xxx   # Linux / macOS
+# set DEEPSEEK_API_KEY=sk-xxx      # Windows CMD
+
 docker compose up -d --build
 ```
 
-首次使用需将 SQL 导入 MySQL 卷，详见 [docker/mysql/init/README.md](docker/mysql/init/README.md)。
+| 服务 | 地址 |
+|------|------|
+| 前端 | http://localhost/ |
+| 后端 | http://localhost:8080/ |
+| 默认账号 | `admin` / `admin123` |
+
+首次构建后端镜像较慢（Maven 拉依赖，已配置阿里云镜像）。MySQL 初始化可能要 1～2 分钟；后端首次若加载 RAG Embedding 也会稍慢，可先看 `docker compose logs -f backend`。
+
+**改 SQL 后要重建库：**
+
+```bash
+docker compose down -v
+docker compose up -d --build
+```
+
+**排查：**
+
+| 现象 | 处理 |
+|------|------|
+| 无法登录 / 验证码不出来 | 等 `mysql`、`redis`、`backend` 就绪；`docker compose ps` / `docker compose logs -f backend` |
+| 80 端口被宝塔占用 | 改 `docker-compose.yml` 前端映射为 `"8088:80"`，访问 http://服务器IP:8088/ |
+| 3306 / 6379 冲突 | 改映射或停掉面板里已有的 MySQL/Redis |
+| AI 试跑或助手失败 | 配置 `DEEPSEEK_API_KEY`，或登录后到「AI能力 → 模型管理」写入 Key |
+| 构建失败 / 很慢 | 确认能访问 `maven.aliyun.com`、`registry.npmmirror.com`；磁盘至少留 10G+ |
+
+生产请修改默认口令、`liteflow.open-api.api-key`、AES `RUOYI_AI_AES_SECRET` 与 MySQL root 密码。
+
+本地开发（非 Docker）仍按上方 Quick Start 手动导入 SQL、起 admin + 前端即可。
 
 ---
 
@@ -503,7 +536,7 @@ A：可不配置模型 Key；未执行 AI Demo 链路时不影响普通业务 De
 
 | 里程碑 | 规划 | 状态 |
 |--------|------|------|
-| **生产闭环** | Docker 一键启动；链路试跑用例与发布前回归；开放 API 示例客户端；Webhook 签名与重试；已发布链路可作为智能体 / MCP 工具；规则包导入导出 | 规划中 |
+| **生产闭环** | Docker 一键启动；链路试跑用例与发布前回归；开放 API 示例客户端；Webhook 签名与重试；已发布链路可作为智能体 / MCP 工具；规则包导入导出 | Docker 已支持；其余规划中 |
 | **编排增强** | HTTP 等一等公民节点；TraceId 贯穿执行与回调；场景模板包；多模型供应商与配额可视；异步执行与幂等；失败告警；脚本沙箱；日志脱敏；版本灰度 | 规划中 |
 | **生态与规模** | 定时 / 入站 Webhook / MQ 触发；第三方节点扩展包；多实例与限流；规则同步 Git；助手辅助生成 / 解释 EL；租户隔离 | 规划中 |
 
