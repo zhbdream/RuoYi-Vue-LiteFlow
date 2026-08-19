@@ -1,5 +1,3 @@
-version: "3.8"
-
 # 一键：docker compose up -d --build
 # 首次会自动导入 sql/ry-vue.sql（仅空数据卷）。重建库：docker compose down -v
 
