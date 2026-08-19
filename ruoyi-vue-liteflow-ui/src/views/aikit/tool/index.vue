@@ -8,6 +8,7 @@
         <el-select v-model="queryParams.toolType" clearable placeholder="全部">
           <el-option label="local" value="local" />
           <el-option label="mcp" value="mcp" />
+          <el-option label="liteflow-chain" value="liteflow-chain" />
         </el-select>
       </el-form-item>
       <el-form-item label="启用" prop="enabled">
@@ -36,7 +37,7 @@
       <el-table-column type="selection" width="55" align="center" />
       <el-table-column label="编码" prop="toolCode" min-width="140" />
       <el-table-column label="名称" prop="toolName" min-width="120" />
-      <el-table-column label="类型" prop="toolType" width="90" />
+      <el-table-column label="类型" prop="toolType" width="130" />
       <el-table-column label="调用键" prop="invokeKey" min-width="140" />
       <el-table-column label="MCP Server" prop="mcpServerKey" width="120" />
       <el-table-column label="启用" prop="enabled" width="70" align="center">
@@ -65,16 +66,20 @@
           <el-select v-model="form.toolType" style="width:100%">
             <el-option label="local" value="local" />
             <el-option label="mcp" value="mcp" />
+            <el-option label="liteflow-chain" value="liteflow-chain" />
           </el-select>
         </el-form-item>
         <el-form-item label="描述">
           <el-input v-model="form.description" type="textarea" :rows="2" />
         </el-form-item>
         <el-form-item label="调用键" prop="invokeKey">
-          <el-input v-model="form.invokeKey" placeholder="local=bean键；mcp=tool名" />
+          <el-input v-model="form.invokeKey" placeholder="local=bean键；mcp=tool名；liteflow-chain=链路ID" />
         </el-form-item>
         <el-form-item label="MCP Server">
-          <el-input v-model="form.mcpServerKey" placeholder="如 ai-core" />
+          <el-input v-model="form.mcpServerKey" placeholder="如 ai-core；链路工具填 liteflow 才进开放 MCP" />
+        </el-form-item>
+        <el-form-item label="入参 Schema">
+          <el-input v-model="form.inputSchemaJson" type="textarea" :rows="4" placeholder='JSON Schema，如 {"type":"object","properties":{"name":{"type":"string"}}}' />
         </el-form-item>
         <el-form-item label="启用">
           <el-radio-group v-model="form.enabled">
@@ -144,7 +149,8 @@ export default {
     reset() {
       this.form = {
         id: undefined, toolCode: undefined, toolName: undefined, toolType: 'mcp',
-        description: undefined, invokeKey: undefined, mcpServerKey: 'ai-core', enabled: '1', remark: undefined
+        description: undefined, invokeKey: undefined, mcpServerKey: 'ai-core',
+        inputSchemaJson: undefined, enabled: '1', remark: undefined
       }
       this.resetForm('form')
     },

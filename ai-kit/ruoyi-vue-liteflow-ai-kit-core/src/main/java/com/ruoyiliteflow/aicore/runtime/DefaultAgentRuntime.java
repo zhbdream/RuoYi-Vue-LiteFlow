@@ -28,6 +28,7 @@ import com.ruoyiliteflow.aicore.spi.ToolCatalog;
 import com.ruoyiliteflow.aicore.spi.ToolDescriptor;
 import com.ruoyiliteflow.aicore.spi.ToolExecutor;
 import com.ruoyiliteflow.aicore.support.AiChatModelFactory;
+import com.ruoyiliteflow.aicore.support.ToolJsonSchemas;
 import com.ruoyiliteflow.aicore.skill.SkillRenderer;
 import com.ruoyiliteflow.common.exception.ServiceException;
 import com.ruoyiliteflow.common.utils.StringUtils;
@@ -41,7 +42,6 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
-import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 
@@ -259,7 +259,7 @@ public class DefaultAgentRuntime implements AgentRuntime
                 toolSpecs.add(ToolSpecification.builder()
                         .name(name)
                         .description(StringUtils.isEmpty(desc) ? name : desc)
-                        .parameters(JsonObjectSchema.builder().build())
+                        .parameters(ToolJsonSchemas.parse(t.getInputSchemaJson()))
                         .build());
             }
         }

@@ -1,5 +1,7 @@
 package com.ruoyiliteflow.framework.config.properties;
 
+import java.util.ArrayList;
+import java.util.List;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
@@ -24,6 +26,11 @@ public class LiteFlowOpenApiProperties
      * 默认 false，避免外部调用意外产生 Token 费用。
      */
     private boolean allowAgentChains = false;
+
+    /**
+     * 即使 allow-agent-chains=false，仍允许开放执行的链路 ID（精确匹配）。
+     */
+    private List<String> allowAgentChainNames = new ArrayList<>();
 
     public boolean isEnabled()
     {
@@ -63,5 +70,35 @@ public class LiteFlowOpenApiProperties
     public void setAllowAgentChains(boolean allowAgentChains)
     {
         this.allowAgentChains = allowAgentChains;
+    }
+
+    public List<String> getAllowAgentChainNames()
+    {
+        return allowAgentChainNames;
+    }
+
+    public void setAllowAgentChainNames(List<String> allowAgentChainNames)
+    {
+        this.allowAgentChainNames = allowAgentChainNames == null ? new ArrayList<>() : allowAgentChainNames;
+    }
+
+    public boolean isAgentChainAllowed(String chainName)
+    {
+        if (allowAgentChains)
+        {
+            return true;
+        }
+        if (chainName == null || allowAgentChainNames == null || allowAgentChainNames.isEmpty())
+        {
+            return false;
+        }
+        for (String name : allowAgentChainNames)
+        {
+            if (chainName.equals(name))
+            {
+                return true;
+            }
+        }
+        return false;
     }
 }

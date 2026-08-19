@@ -110,7 +110,7 @@ Accept: text/event-stream
 
 - Shell / 工作区文件 Tool 默认关闭（`enableShellTool=false`）
 - API Key：后台「AI能力 → 模型管理」AES 加密入库；yml 仅作回退，勿提交 Git
-- 开放 API：默认 **禁止** 含 Agent 的链路（`liteflow.open-api.allow-agent-chains=false`）
+- 开放 API：默认 **禁止** 含 Agent 的链路。按链路放行 `liteflow.open-api.allow-agent-chain-names`，或全局 `allow-agent-chains=true`
 - 日配额：Redis 计数单用户调用/Token 与单链路调用（`liteflow.agent.quota.*`）
 - `GET /liteflow/config` 仅返回 `agentConfigured` 布尔值，不回传密钥
 

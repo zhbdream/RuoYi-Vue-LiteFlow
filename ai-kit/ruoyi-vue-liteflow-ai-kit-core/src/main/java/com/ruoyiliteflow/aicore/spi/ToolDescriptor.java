@@ -12,6 +12,9 @@ public class ToolDescriptor
     private String invokeKey;
     private String mcpServerKey;
 
+    /** JSON Schema，供模型填参 */
+    private String inputSchemaJson;
+
     public String getToolCode()
     {
         return toolCode;
@@ -70,6 +73,16 @@ public class ToolDescriptor
     public void setMcpServerKey(String mcpServerKey)
     {
         this.mcpServerKey = mcpServerKey;
+    }
+
+    public String getInputSchemaJson()
+    {
+        return inputSchemaJson;
+    }
+
+    public void setInputSchemaJson(String inputSchemaJson)
+    {
+        this.inputSchemaJson = inputSchemaJson;
     }
 
     public Map<String, Object> toMcpToolMap()

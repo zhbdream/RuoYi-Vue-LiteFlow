@@ -52,6 +52,14 @@
       </el-table-column>
       <el-table-column label="耗时(ms)" prop="durationMs" width="90" align="center" />
       <el-table-column label="执行人" prop="createBy" width="90" align="center" />
+      <el-table-column label="回调" prop="webhookStatus" width="80" align="center">
+        <template slot-scope="scope">
+          <el-tag v-if="scope.row.webhookStatus" :type="webhookTagType(scope.row.webhookStatus)" size="mini">
+            {{ webhookStatusText(scope.row.webhookStatus) }}
+          </el-tag>
+          <span v-else>—</span>
+        </template>
+      </el-table-column>
       <el-table-column label="执行时间" prop="createTime" width="160" align="center" />
       <el-table-column label="操作" align="center" width="160">
         <template slot-scope="scope">
@@ -78,6 +86,12 @@
           <el-tag type="danger" size="mini">{{ current.failedNodeId }}</el-tag>
         </el-descriptions-item>
         <el-descriptions-item label="错误" :span="2">{{ current.errorMessage || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="Webhook">{{ webhookStatusText(current.webhookStatus) }}</el-descriptions-item>
+        <el-descriptions-item label="尝试次数">{{ current.webhookAttempts || 0 }}</el-descriptions-item>
+        <el-descriptions-item label="回调 URL" :span="2">{{ current.webhookUrl || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="HTTP 状态">{{ current.webhookHttpStatus != null ? current.webhookHttpStatus : '-' }}</el-descriptions-item>
+        <el-descriptions-item label="回调时间">{{ current.webhookTime || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="回调说明" :span="2">{{ current.webhookMessage || '-' }}</el-descriptions-item>
       </el-descriptions>
       <div v-if="current && current.paramJson" style="margin-top:12px">
         <div class="detail-label">请求参数</div>
@@ -195,6 +209,16 @@ export default {
       } catch (e) {
         return str
       }
+    },
+    webhookStatusText(status) {
+      const map = { '0': '投递中', '1': '成功', '2': '失败', '3': '跳过' }
+      return map[status] || (status ? status : '未投递')
+    },
+    webhookTagType(status) {
+      if (status === '1') return 'success'
+      if (status === '2') return 'danger'
+      if (status === '0') return 'warning'
+      return 'info'
     }
   }
 }

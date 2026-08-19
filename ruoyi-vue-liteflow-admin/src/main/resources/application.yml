@@ -179,12 +179,17 @@ liteflow:
     only-on-failure: false
     connect-timeout-ms: 3000
     read-timeout-ms: 5000
+    secret: ${LITEFLOW_WEBHOOK_SECRET:}
+    max-attempts: 3
+    retry-backoff-ms: 1000
   open-api:
     enabled: true
     api-key: ruoyi-liteflow-open-key-change-me
     header-name: X-LiteFlow-Api-Key
     # 含 Re-Act Agent 的链路默认禁止走开放 API（避免外部误调用产生 Token 费用）
     allow-agent-chains: false
+    # 按链路放行，例如 [agentRiskDemo]
+    allow-agent-chain-names: []
   # Re-Act Agent（DeepSeek / OpenAI 兼容）。优先用「AI能力 → 模型管理」加密 Key；yml 作回退。
   agent:
     workspace:

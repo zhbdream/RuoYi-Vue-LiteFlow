@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyiliteflow.liteflow.mapper.LfChainCaseMapper">
+
+    <resultMap type="com.ruoyiliteflow.liteflow.domain.LfChainCase" id="LfChainCaseResult">
+        <id     property="id"                 column="id"                   />
+        <result property="chainName"          column="chain_name"           />
+        <result property="caseName"           column="case_name"            />
+        <result property="paramJson"          column="param_json"           />
+        <result property="expectSuccess"      column="expect_success"       />
+        <result property="expectStepContains" column="expect_step_contains" />
+        <result property="sortOrder"          column="sort_order"           />
+        <result property="status"             column="status"               />
+        <result property="lastRunSuccess"     column="last_run_success"     />
+        <result property="lastRunLogId"       column="last_run_log_id"      />
+        <result property="lastRunMessage"     column="last_run_message"     />
+        <result property="lastRunTime"        column="last_run_time"        />
+        <result property="createBy"           column="create_by"            />
+        <result property="createTime"         column="create_time"          />
+        <result property="updateBy"           column="update_by"            />
+        <result property="updateTime"         column="update_time"          />
+        <result property="remark"             column="remark"               />
+    </resultMap>
+
+    <sql id="selectLfChainCaseVo">
+        select id, chain_name, case_name, param_json, expect_success, expect_step_contains,
+               sort_order, status, last_run_success, last_run_log_id, last_run_message, last_run_time,
+               create_by, create_time, update_by, update_time, remark
+        from lf_chain_case
+    </sql>
+
+    <select id="selectLfChainCaseList" parameterType="com.ruoyiliteflow.liteflow.domain.LfChainCase" resultMap="LfChainCaseResult">
+        <include refid="selectLfChainCaseVo"/>
+        <where>
+            <if test="chainName != null and chainName != ''">
+                AND chain_name = #{chainName}
+            </if>
+            <if test="caseName != null and caseName != ''">
+                AND case_name like concat('%', #{caseName}, '%')
+            </if>
+            <if test="status != null and status != ''">
+                AND status = #{status}
+            </if>
+        </where>
+        order by sort_order asc, id asc
+    </select>
+
+    <select id="selectLfChainCaseById" parameterType="Long" resultMap="LfChainCaseResult">
+        <include refid="selectLfChainCaseVo"/>
+        where id = #{id}
+    </select>
+
+    <select id="selectEnabledByChainName" parameterType="String" resultMap="LfChainCaseResult">
+        <include refid="selectLfChainCaseVo"/>
+        where chain_name = #{chainName} and status = '0'
+        order by sort_order asc, id asc
+    </select>
+
+    <insert id="insertLfChainCase" parameterType="com.ruoyiliteflow.liteflow.domain.LfChainCase" useGeneratedKeys="true" keyProperty="id">
+        insert into lf_chain_case (
+            chain_name, case_name, param_json, expect_success, expect_step_contains,
+            sort_order, status, create_by, create_time, remark
+        ) values (
+            #{chainName}, #{caseName}, #{paramJson}, #{expectSuccess}, #{expectStepContains},
+            #{sortOrder}, #{status}, #{createBy}, sysdate(), #{remark}
+        )
+    </insert>
+
+    <update id="updateLfChainCase" parameterType="com.ruoyiliteflow.liteflow.domain.LfChainCase">
+        update lf_chain_case
+        <set>
+            <if test="caseName != null and caseName != ''">case_name = #{caseName},</if>
+            <if test="paramJson != null and paramJson != ''">param_json = #{paramJson},</if>
+            <if test="expectSuccess != null and expectSuccess != ''">expect_success = #{expectSuccess},</if>
+            expect_step_contains = #{expectStepContains},
+            <if test="sortOrder != null">sort_order = #{sortOrder},</if>
+            <if test="status != null and status != ''">status = #{status},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            update_by = #{updateBy},
+            update_time = sysdate()
+        </set>
+        where id = #{id}
+    </update>
+
+    <update id="updateLastRun" parameterType="com.ruoyiliteflow.liteflow.domain.LfChainCase">
+        update lf_chain_case
+        set last_run_success = #{lastRunSuccess},
+            last_run_log_id = #{lastRunLogId},
+            last_run_message = #{lastRunMessage},
+            last_run_time = sysdate()
+        where id = #{id}
+    </update>
+
+    <delete id="deleteLfChainCaseByIds" parameterType="Long">
+        delete from lf_chain_case where id in
+        <foreach collection="array" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+
+</mapper>

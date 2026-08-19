@@ -16,6 +16,8 @@ public interface LfExecLogMapper
 
     int insertLfExecLog(LfExecLog lfExecLog);
 
+    int updateWebhook(LfExecLog lfExecLog);
+
     int deleteLfExecLogByIds(Long[] ids);
 
     int cleanLfExecLog();

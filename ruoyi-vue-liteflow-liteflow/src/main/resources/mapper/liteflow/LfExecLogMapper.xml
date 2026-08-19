@@ -21,12 +21,20 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="failedNodeId"             column="failed_node_id"            />
         <result property="createBy"                 column="create_by"                 />
         <result property="createTime"               column="create_time"               />
+        <result property="webhookUrl"               column="webhook_url"               />
+        <result property="webhookStatus"            column="webhook_status"            />
+        <result property="webhookAttempts"          column="webhook_attempts"          />
+        <result property="webhookHttpStatus"        column="webhook_http_status"       />
+        <result property="webhookMessage"           column="webhook_message"           />
+        <result property="webhookTime"              column="webhook_time"              />
     </resultMap>
 
     <sql id="selectLfExecLogVo">
         select id, request_id, chain_name, success, code, message, execute_step_str,
                execute_step_str_with_time, steps_json, param_json, context_json,
-               duration_ms, error_message, failed_node_id, create_by, create_time
+               duration_ms, error_message, failed_node_id, create_by, create_time,
+               webhook_url, webhook_status, webhook_attempts, webhook_http_status,
+               webhook_message, webhook_time
         from lf_exec_log
     </sql>
 
@@ -73,6 +81,17 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             #{durationMs}, #{errorMessage}, #{failedNodeId}, #{createBy}, sysdate()
         )
     </insert>
+
+    <update id="updateWebhook" parameterType="com.ruoyiliteflow.liteflow.domain.LfExecLog">
+        update lf_exec_log
+        set webhook_url = #{webhookUrl},
+            webhook_status = #{webhookStatus},
+            webhook_attempts = #{webhookAttempts},
+            webhook_http_status = #{webhookHttpStatus},
+            webhook_message = #{webhookMessage},
+            webhook_time = sysdate()
+        where id = #{id}
+    </update>
 
     <delete id="deleteLfExecLogByIds" parameterType="Long">
         delete from lf_exec_log where id in

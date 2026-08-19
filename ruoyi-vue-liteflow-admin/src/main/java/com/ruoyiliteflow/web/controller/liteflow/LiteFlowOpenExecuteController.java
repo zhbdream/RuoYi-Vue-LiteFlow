@@ -58,9 +58,9 @@ public class LiteFlowOpenExecuteController extends BaseController
             @RequestBody(required = false) Map<String, Object> param,
             HttpServletRequest request)
     {
-        if (!openApiProperties.isAllowAgentChains() && liteFlowExecuteService.chainContainsAgent(chainName))
+        if (liteFlowExecuteService.chainContainsAgent(chainName) && !openApiProperties.isAgentChainAllowed(chainName))
         {
-            throw new ServiceException("开放 API 默认禁止执行含 Agent 的链路，请改用后台试跑，或配置 liteflow.open-api.allow-agent-chains=true");
+            throw new ServiceException("开放 API 默认禁止执行含 Agent 的链路，请改用后台试跑，或将链路加入 liteflow.open-api.allow-agent-chain-names，或设置 allow-agent-chains=true");
         }
         String createBy = resolveCreateBy(request);
         boolean bypassChainPermission = "api-key".equals(request.getAttribute(LiteFlowOpenApiAuthFilter.OPEN_API_AUTH_ATTR));

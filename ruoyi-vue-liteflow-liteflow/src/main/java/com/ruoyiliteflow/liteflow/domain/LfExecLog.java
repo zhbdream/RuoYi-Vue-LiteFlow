@@ -1,7 +1,9 @@
 package com.ruoyiliteflow.liteflow.domain;
 
+import java.util.Date;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.commons.lang3.builder.ToStringStyle;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.ruoyiliteflow.common.annotation.Excel;
 import com.ruoyiliteflow.common.core.domain.BaseEntity;
 
@@ -41,6 +43,20 @@ public class LfExecLog extends BaseEntity
     private String errorMessage;
 
     private String failedNodeId;
+
+    private String webhookUrl;
+
+    /** 空未投递 0投递中 1成功 2失败 3跳过 */
+    private String webhookStatus;
+
+    private Integer webhookAttempts;
+
+    private Integer webhookHttpStatus;
+
+    private String webhookMessage;
+
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private Date webhookTime;
 
     public Long getId()
     {
@@ -180,6 +196,66 @@ public class LfExecLog extends BaseEntity
     public void setFailedNodeId(String failedNodeId)
     {
         this.failedNodeId = failedNodeId;
+    }
+
+    public String getWebhookUrl()
+    {
+        return webhookUrl;
+    }
+
+    public void setWebhookUrl(String webhookUrl)
+    {
+        this.webhookUrl = webhookUrl;
+    }
+
+    public String getWebhookStatus()
+    {
+        return webhookStatus;
+    }
+
+    public void setWebhookStatus(String webhookStatus)
+    {
+        this.webhookStatus = webhookStatus;
+    }
+
+    public Integer getWebhookAttempts()
+    {
+        return webhookAttempts;
+    }
+
+    public void setWebhookAttempts(Integer webhookAttempts)
+    {
+        this.webhookAttempts = webhookAttempts;
+    }
+
+    public Integer getWebhookHttpStatus()
+    {
+        return webhookHttpStatus;
+    }
+
+    public void setWebhookHttpStatus(Integer webhookHttpStatus)
+    {
+        this.webhookHttpStatus = webhookHttpStatus;
+    }
+
+    public String getWebhookMessage()
+    {
+        return webhookMessage;
+    }
+
+    public void setWebhookMessage(String webhookMessage)
+    {
+        this.webhookMessage = webhookMessage;
+    }
+
+    public Date getWebhookTime()
+    {
+        return webhookTime;
+    }
+
+    public void setWebhookTime(Date webhookTime)
+    {
+        this.webhookTime = webhookTime;
     }
 
     @Override

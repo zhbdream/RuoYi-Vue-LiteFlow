@@ -128,16 +128,23 @@ public class LiteFlowExecuteServiceImpl implements ILiteFlowExecuteService
     @Override
     public LiteFlowExecuteResultVo executeWithEl(String elData, Object param, String contextClass, String createBy)
     {
+        return executeWithEl("(EL调试)", elData, param, contextClass, createBy);
+    }
+
+    @Override
+    public LiteFlowExecuteResultVo executeWithEl(String chainName, String elData, Object param, String contextClass, String createBy)
+    {
         if (StringUtils.isEmpty(elData))
         {
             throw new ServiceException("EL 表达式不能为空");
         }
+        String logChainName = StringUtils.isEmpty(chainName) ? "(EL调试)" : chainName;
         long start = System.currentTimeMillis();
         LiteflowResponse response = invokeWithContext(elData.trim(), param, contextClass, true);
-        LiteFlowExecuteResultVo result = toResultVo(response, "(EL调试)");
+        LiteFlowExecuteResultVo result = toResultVo(response, logChainName);
         try
         {
-            lfExecLogService.saveExecuteLog("(EL调试)", param, result, System.currentTimeMillis() - start, createBy);
+            lfExecLogService.saveExecuteLog(logChainName, param, result, System.currentTimeMillis() - start, createBy);
         }
         catch (Exception ignored)
         {

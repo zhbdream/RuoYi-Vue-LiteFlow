@@ -9,6 +9,10 @@ public interface IAiToolService
 
     AiTool selectAiToolById(Long id);
 
+    AiTool selectAiToolByCode(String toolCode);
+
+    AiTool selectAiToolByTypeAndInvokeKey(String toolType, String invokeKey);
+
     int insertAiTool(AiTool tool);
 
     int updateAiTool(AiTool tool);

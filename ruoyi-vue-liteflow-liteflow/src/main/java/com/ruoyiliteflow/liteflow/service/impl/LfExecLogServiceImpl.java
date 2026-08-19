@@ -93,6 +93,16 @@ public class LfExecLogServiceImpl implements ILfExecLogService
     }
 
     @Override
+    public void updateWebhook(LfExecLog lfExecLog)
+    {
+        if (lfExecLog == null || lfExecLog.getId() == null)
+        {
+            return;
+        }
+        lfExecLogMapper.updateWebhook(lfExecLog);
+    }
+
+    @Override
     public int deleteLfExecLogByIds(Long[] ids)
     {
         return lfExecLogMapper.deleteLfExecLogByIds(ids);

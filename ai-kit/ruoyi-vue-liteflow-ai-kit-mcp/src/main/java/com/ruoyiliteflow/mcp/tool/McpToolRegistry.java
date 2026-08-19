@@ -26,6 +26,9 @@ public class McpToolRegistry
     @Autowired(required = false)
     private DynamicToolSource dynamicToolSource;
 
+    @Autowired(required = false)
+    private LiteFlowOpenExecuteClient liteFlowOpenExecuteClient;
+
     public McpToolRegistry(AiCoreMcpTools aiCoreMcpTools, GovernanceMcpTools governanceMcpTools)
     {
         this.aiCoreMcpTools = aiCoreMcpTools;
@@ -87,6 +90,33 @@ public class McpToolRegistry
         return list;
     }
 
+    public List<Map<String, Object>> listByServer(String server)
+    {
+        List<Map<String, Object>> list = new ArrayList<>();
+        if (StringUtils.isEmpty(server))
+        {
+            return list;
+        }
+        for (DynamicTool t : memoryTools.values())
+        {
+            if (server.equals(t.server()))
+            {
+                list.add(t.toMap());
+            }
+        }
+        if (dynamicToolSource != null)
+        {
+            for (DynamicTool t : dynamicToolSource.loadTools())
+            {
+                if (t != null && server.equals(t.server()) && !containsName(list, t.name()))
+                {
+                    list.add(t.toMap());
+                }
+            }
+        }
+        return list;
+    }
+
     public Object callAiCore(String toolName, JSONObject args)
     {
         try
@@ -122,6 +152,15 @@ public class McpToolRegistry
             throw new ServiceException("未知 Tool: " + toolName);
         }
         String invokeKey = tool.invokeKey();
+        if ("liteflow".equals(tool.server()))
+        {
+            String chainName = StringUtils.isNotEmpty(invokeKey) ? invokeKey : stripLfPrefix(toolName);
+            if (liteFlowOpenExecuteClient == null)
+            {
+                return Map.of("ok", false, "error", "未配置 LiteFlow 开放执行客户端");
+            }
+            return liteFlowOpenExecuteClient.execute(chainName, args);
+        }
         if (StringUtils.isEmpty(invokeKey) || "echo".equalsIgnoreCase(invokeKey))
         {
             Map<String, Object> resp = new LinkedHashMap<>();
@@ -162,6 +201,15 @@ public class McpToolRegistry
         {
             memoryTools.remove(name);
         }
+    }
+
+    private static String stripLfPrefix(String toolName)
+    {
+        if (toolName != null && toolName.startsWith("lf_"))
+        {
+            return toolName.substring(3);
+        }
+        return toolName;
     }
 
     private static boolean containsName(List<Map<String, Object>> list, String name)

@@ -14,6 +14,8 @@ public interface ILfExecLogService
 
     void saveExecuteLog(String chainName, Object param, LiteFlowExecuteResultVo result, long durationMs, String createBy);
 
+    void updateWebhook(LfExecLog lfExecLog);
+
     int deleteLfExecLogByIds(Long[] ids);
 
     int cleanLfExecLog();

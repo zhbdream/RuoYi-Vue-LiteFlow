@@ -62,10 +62,11 @@
           <el-tag :type="scope.row.status === '0' ? 'success' : 'danger'">{{ scope.row.status === '0' ? '正常' : '停用' }}</el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="操作" align="center" class-name="small-padding fixed-width" width="200" fixed="right">
+      <el-table-column label="操作" align="center" class-name="small-padding fixed-width" width="268" fixed="right">
         <template slot-scope="scope">
           <el-button size="mini" type="text" icon="el-icon-s-operation" @click="goEditor(scope.row)" v-hasPermi="['liteflow:editor:view']">编排</el-button>
           <el-button size="mini" type="text" icon="el-icon-video-play" @click="handleExecute(scope.row)" v-hasPermi="['liteflow:execute']">试跑</el-button>
+          <el-button size="mini" type="text" icon="el-icon-finished" @click="openCaseDialog(scope.row)" v-hasPermi="['liteflow:chain:query']">用例</el-button>
           <el-button
             v-if="scope.row.draftFlag === '1'"
             size="mini"
@@ -83,6 +84,7 @@
               <el-dropdown-item command="permission" icon="el-icon-user" v-hasPermi="['liteflow:chain:permission']">执行权限</el-dropdown-item>
               <el-dropdown-item command="clone" icon="el-icon-copy-document" v-hasPermi="['liteflow:chain:add']">克隆</el-dropdown-item>
               <el-dropdown-item command="export" icon="el-icon-download" v-hasPermi="['liteflow:chain:query']">导出</el-dropdown-item>
+              <el-dropdown-item command="asTool" icon="el-icon-connection" v-hasPermi="['liteflow:execute']">设为工具</el-dropdown-item>
               <el-dropdown-item command="reload" icon="el-icon-refresh" v-hasPermi="['liteflow:chain:reload']">热刷新</el-dropdown-item>
               <el-dropdown-item command="delete" icon="el-icon-delete" divided v-hasPermi="['liteflow:chain:remove']">删除</el-dropdown-item>
             </el-dropdown-menu>
@@ -240,6 +242,7 @@
 
       <div slot="footer" class="dialog-footer">
         <el-button type="primary" :loading="executeLoading" @click="submitExecute">执 行</el-button>
+        <el-button :disabled="liteflowReadonly" v-hasPermi="['liteflow:chain:edit']" @click="saveExecuteAsCase">保存为用例</el-button>
         <el-button @click="executeOpen = false">关 闭</el-button>
       </div>
     </el-dialog>
@@ -316,6 +319,86 @@
       </div>
     </el-dialog>
 
+    <el-dialog :title="'试跑用例 — ' + caseChainName" :visible.sync="caseOpen" width="980px" append-to-body>
+      <el-alert type="info" :closable="false" show-icon style="margin-bottom:12px">
+        回归使用当前库中的 EL（含草稿），不要求已发布。发布时可选择先跑启用中的用例。
+      </el-alert>
+      <el-row :gutter="10" class="mb8">
+        <el-col :span="1.5">
+          <el-button type="primary" plain icon="el-icon-plus" size="mini" :disabled="liteflowReadonly" @click="openCaseForm()" v-hasPermi="['liteflow:chain:edit']">新增</el-button>
+        </el-col>
+        <el-col :span="1.5">
+          <el-button type="success" plain icon="el-icon-video-play" size="mini" :loading="caseRunLoading" @click="handleRunAllCases" v-hasPermi="['liteflow:execute']">全部回归</el-button>
+        </el-col>
+      </el-row>
+      <el-table v-loading="caseLoading" :data="caseList" size="small" border>
+        <el-table-column label="用例" prop="caseName" min-width="120" :show-overflow-tooltip="true" />
+        <el-table-column label="期望" width="70" align="center">
+          <template slot-scope="scope">
+            {{ scope.row.expectSuccess === '0' ? '失败' : '成功' }}
+          </template>
+        </el-table-column>
+        <el-table-column label="步骤包含" prop="expectStepContains" min-width="110" :show-overflow-tooltip="true" />
+        <el-table-column label="状态" width="70" align="center">
+          <template slot-scope="scope">
+            <el-tag :type="scope.row.status === '0' ? 'success' : 'info'" size="mini">{{ scope.row.status === '0' ? '启用' : '停用' }}</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="最近回归" width="80" align="center">
+          <template slot-scope="scope">
+            <el-tag v-if="scope.row.lastRunSuccess === '1'" type="success" size="mini">通过</el-tag>
+            <el-tag v-else-if="scope.row.lastRunSuccess === '0'" type="danger" size="mini">失败</el-tag>
+            <span v-else>—</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="最近时间" prop="lastRunTime" width="160" :show-overflow-tooltip="true" />
+        <el-table-column label="说明" prop="lastRunMessage" min-width="160" :show-overflow-tooltip="true" />
+        <el-table-column label="操作" width="150" align="center" fixed="right">
+          <template slot-scope="scope">
+            <el-button size="mini" type="text" @click="handleRunCase(scope.row)" v-hasPermi="['liteflow:execute']">跑</el-button>
+            <el-button size="mini" type="text" :disabled="liteflowReadonly" @click="openCaseForm(scope.row)" v-hasPermi="['liteflow:chain:edit']">改</el-button>
+            <el-button size="mini" type="text" :disabled="liteflowReadonly" @click="handleDeleteCase(scope.row)" v-hasPermi="['liteflow:chain:edit']">删</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+    </el-dialog>
+
+    <el-dialog :title="caseFormTitle" :visible.sync="caseFormOpen" width="640px" append-to-body>
+      <el-form ref="caseForm" :model="caseForm" :rules="caseFormRules" label-width="110px">
+        <el-form-item label="用例名称" prop="caseName">
+          <el-input v-model="caseForm.caseName" placeholder="如 入门问候" />
+        </el-form-item>
+        <el-form-item label="请求 JSON" prop="paramJson">
+          <el-input v-model="caseForm.paramJson" type="textarea" :rows="8" placeholder="{}" />
+        </el-form-item>
+        <el-form-item label="期望结果" prop="expectSuccess">
+          <el-radio-group v-model="caseForm.expectSuccess">
+            <el-radio label="1">成功</el-radio>
+            <el-radio label="0">失败</el-radio>
+          </el-radio-group>
+        </el-form-item>
+        <el-form-item label="步骤应包含" prop="expectStepContains">
+          <el-input v-model="caseForm.expectStepContains" placeholder="可选，如 helloA" />
+        </el-form-item>
+        <el-form-item label="排序" prop="sortOrder">
+          <el-input-number v-model="caseForm.sortOrder" :min="0" :max="9999" controls-position="right" />
+        </el-form-item>
+        <el-form-item label="状态" prop="status">
+          <el-radio-group v-model="caseForm.status">
+            <el-radio label="0">启用</el-radio>
+            <el-radio label="1">停用</el-radio>
+          </el-radio-group>
+        </el-form-item>
+        <el-form-item label="备注" prop="remark">
+          <el-input v-model="caseForm.remark" type="textarea" :rows="2" />
+        </el-form-item>
+      </el-form>
+      <div slot="footer" class="dialog-footer">
+        <el-button type="primary" @click="submitCaseForm">确 定</el-button>
+        <el-button @click="caseFormOpen = false">取 消</el-button>
+      </div>
+    </el-dialog>
+
     <el-dialog title="链路执行权限" :visible.sync="permissionOpen" width="640px" append-to-body>
       <p class="perm-chain-name">链路：<strong>{{ permissionChainName }}</strong></p>
       <el-table v-loading="permissionLoading" :data="permissionRows" border size="small" max-height="360">
@@ -337,12 +420,34 @@
         <el-button @click="permissionOpen = false">取 消</el-button>
       </div>
     </el-dialog>
+
+    <el-dialog title="设为智能体工具" :visible.sync="asToolOpen" width="560px" append-to-body>
+      <el-form label-width="110px" size="small">
+        <el-form-item label="链路">
+          <span>{{ asToolForm.chainName }}</span>
+          <el-tag v-if="asToolForm.published === false" type="warning" size="mini" style="margin-left:8px">未发布</el-tag>
+          <el-tag v-else-if="asToolForm.exposed" type="success" size="mini" style="margin-left:8px">已暴露</el-tag>
+        </el-form-item>
+        <el-form-item label="工具编码">
+          <el-input :value="asToolForm.toolCode" disabled />
+        </el-form-item>
+        <el-form-item label="同步开放 MCP">
+          <el-checkbox v-model="asToolForm.exposeMcp" :disabled="asToolForm.agentChain">MCP :8090 可调用</el-checkbox>
+          <p class="perm-tip">含 Agent 的链路默认不进开放 MCP。未启动 MCP 时，后台助手仍走本地执行。</p>
+        </el-form-item>
+      </el-form>
+      <div slot="footer" class="dialog-footer">
+        <el-button type="primary" :disabled="asToolForm.published === false" @click="submitAsTool" v-hasPermi="['liteflow:execute']">暴露</el-button>
+        <el-button type="danger" plain :disabled="!asToolForm.exposed" @click="removeAsTool" v-hasPermi="['liteflow:execute']">取消</el-button>
+        <el-button @click="asToolOpen = false">关 闭</el-button>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
 <script>
 import { mapGetters } from 'vuex'
-import { listChain, getChain, delChain, addChain, updateChain, reloadChain, executeChain, executeChainStream, executeRoute, publishChain, cloneChain, exportChain, importChain, listChainPermission, saveChainPermission } from '@/api/liteflow/chain'
+import { listChain, getChain, delChain, addChain, updateChain, reloadChain, executeChain, executeChainStream, executeRoute, publishChain, cloneChain, exportChain, importChain, listChainPermission, saveChainPermission, listChainCase, addChainCase, updateChainCase, delChainCase, runChainCase, runAllChainCases, getChainAsTool, exposeChainAsTool, unexposeChainAsTool } from '@/api/liteflow/chain'
 import { listRole } from '@/api/system/role'
 import { CHAIN_TEMPLATES, getDefaultExecuteParam } from '@/utils/liteflow/chainTemplates'
 
@@ -382,6 +487,16 @@ export default {
       permissionLoading: false,
       permissionChainName: '',
       permissionRows: [],
+      asToolOpen: false,
+      asToolChainId: null,
+      asToolForm: {
+        chainName: '',
+        toolCode: '',
+        published: true,
+        exposed: false,
+        agentChain: false,
+        exposeMcp: false
+      },
       allRoles: [],
       cloneForm: {
         id: null,
@@ -413,6 +528,19 @@ export default {
       rules: {
         chainName: [{ required: true, message: '链路ID不能为空', trigger: 'blur' }],
         elData: [{ required: true, message: 'EL 表达式不能为空', trigger: 'blur' }]
+      },
+      caseOpen: false,
+      caseLoading: false,
+      caseRunLoading: false,
+      caseChainName: '',
+      caseChainRow: null,
+      caseList: [],
+      caseFormOpen: false,
+      caseFormTitle: '新增用例',
+      caseForm: {},
+      caseFormRules: {
+        caseName: [{ required: true, message: '用例名称不能为空', trigger: 'blur' }],
+        paramJson: [{ required: true, message: '请求 JSON 不能为空', trigger: 'blur' }]
       }
     }
   },
@@ -542,6 +670,7 @@ export default {
         audit: () => this.goAudit(row),
         version: () => this.goVersion(row),
         permission: () => this.openPermissionDialog(row),
+        asTool: () => this.openAsToolDialog(row),
         clone: () => this.openCloneDialog(row),
         export: () => this.handleExport(row),
         reload: () => this.handleReload(row),
@@ -753,11 +882,182 @@ export default {
       return JSON.stringify(result, null, 2)
     },
     handlePublish(row) {
-      this.$modal.confirm('确认发布链路 "' + row.chainName + '" ？发布后将热刷新生效。').then(() => {
-        return publishChain(row.id)
+      this.$confirm('发布后将热刷新生效。是否先跑启用中的用例？失败则中止发布。', '发布链路', {
+        distinguishCancelAndClose: true,
+        confirmButtonText: '先跑用例再发布',
+        cancelButtonText: '直接发布',
+        type: 'warning'
       }).then(() => {
+        this.publishWithCases(row)
+      }).catch(action => {
+        if (action === 'cancel') {
+          this.doPublish(row)
+        }
+      })
+    },
+    publishWithCases(row) {
+      this.$modal.loading('正在回归用例...')
+      runAllChainCases(row.chainName).then(res => {
+        this.$modal.closeLoading()
+        const data = res.data || {}
+        if (!data.total) {
+          this.$modal.msg('没有启用中的用例，直接发布')
+          return this.doPublish(row)
+        }
+        if (data.failed > 0) {
+          this.$modal.msgError('回归未通过 ' + data.failed + '/' + data.total + '，已中止发布')
+          this.openCaseDialog(row)
+          return
+        }
+        this.$modal.msgSuccess('用例全部通过（' + data.passed + '）')
+        return this.doPublish(row)
+      }).catch(() => {
+        this.$modal.closeLoading()
+      })
+    },
+    doPublish(row) {
+      return publishChain(row.id).then(() => {
         this.getList()
         this.$modal.msgSuccess('发布成功')
+      })
+    },
+    openCaseDialog(row) {
+      this.caseChainRow = row
+      this.caseChainName = row.chainName
+      this.caseOpen = true
+      this.loadCaseList()
+    },
+    loadCaseList() {
+      this.caseLoading = true
+      listChainCase({ chainName: this.caseChainName, pageNum: 1, pageSize: 50 }).then(res => {
+        this.caseList = res.rows || []
+      }).finally(() => {
+        this.caseLoading = false
+      })
+    },
+    resetCaseForm() {
+      this.caseForm = {
+        id: undefined,
+        chainName: this.caseChainName,
+        caseName: undefined,
+        paramJson: JSON.stringify(getDefaultExecuteParam(this.caseChainName), null, 2),
+        expectSuccess: '1',
+        expectStepContains: undefined,
+        sortOrder: 0,
+        status: '0',
+        remark: undefined
+      }
+    },
+    openCaseForm(row) {
+      if (row && row.id) {
+        this.caseFormTitle = '修改用例'
+        this.caseForm = {
+          id: row.id,
+          chainName: row.chainName,
+          caseName: row.caseName,
+          paramJson: this.prettyJson(row.paramJson),
+          expectSuccess: row.expectSuccess || '1',
+          expectStepContains: row.expectStepContains,
+          sortOrder: row.sortOrder == null ? 0 : row.sortOrder,
+          status: row.status || '0',
+          remark: row.remark
+        }
+      } else {
+        this.caseFormTitle = '新增用例'
+        this.resetCaseForm()
+      }
+      this.caseFormOpen = true
+      this.$nextTick(() => this.resetForm('caseForm'))
+    },
+    prettyJson(text) {
+      try {
+        return JSON.stringify(JSON.parse(text || '{}'), null, 2)
+      } catch (e) {
+        return text || '{}'
+      }
+    },
+    submitCaseForm() {
+      this.$refs.caseForm.validate(valid => {
+        if (!valid) {
+          return
+        }
+        try {
+          JSON.parse(this.caseForm.paramJson || '{}')
+        } catch (e) {
+          this.$modal.msgError('请求 JSON 格式不正确')
+          return
+        }
+        const req = this.caseForm.id ? updateChainCase : addChainCase
+        req(this.caseForm).then(() => {
+          this.$modal.msgSuccess(this.caseForm.id ? '修改成功' : '新增成功')
+          this.caseFormOpen = false
+          this.loadCaseList()
+        })
+      })
+    },
+    handleRunCase(row) {
+      this.caseRunLoading = true
+      runChainCase(row.id).then(res => {
+        const data = res.data || {}
+        if (data.passed) {
+          this.$modal.msgSuccess((data.caseName || '用例') + ' 通过')
+        } else {
+          this.$modal.msgError((data.caseName || '用例') + ' 未通过：' + (data.message || ''))
+        }
+        this.loadCaseList()
+      }).finally(() => {
+        this.caseRunLoading = false
+      })
+    },
+    handleRunAllCases() {
+      this.caseRunLoading = true
+      runAllChainCases(this.caseChainName).then(res => {
+        const data = res.data || {}
+        if (!data.total) {
+          this.$modal.msg('没有启用中的用例')
+        } else if (data.failed > 0) {
+          this.$modal.msgError('回归未通过 ' + data.failed + '/' + data.total)
+        } else {
+          this.$modal.msgSuccess('全部通过（' + data.passed + '）')
+        }
+        this.loadCaseList()
+      }).finally(() => {
+        this.caseRunLoading = false
+      })
+    },
+    handleDeleteCase(row) {
+      this.$modal.confirm('是否删除用例「' + row.caseName + '」？').then(() => {
+        return delChainCase(row.id)
+      }).then(() => {
+        this.$modal.msgSuccess('删除成功')
+        this.loadCaseList()
+      }).catch(() => {})
+    },
+    saveExecuteAsCase() {
+      let paramJson = this.executeParamJson || '{}'
+      try {
+        JSON.parse(paramJson)
+      } catch (e) {
+        this.$modal.msgError('JSON 格式不正确')
+        return
+      }
+      this.$prompt('用例名称', '保存为用例', {
+        confirmButtonText: '保存',
+        cancelButtonText: '取消',
+        inputValue: this.executeChainName + ' 试跑',
+        inputPattern: /\S+/,
+        inputErrorMessage: '用例名称不能为空'
+      }).then(({ value }) => {
+        return addChainCase({
+          chainName: this.executeChainName,
+          caseName: value,
+          paramJson: paramJson,
+          expectSuccess: this.executeResult && this.executeResult.success === false ? '0' : '1',
+          status: '0',
+          sortOrder: 0
+        })
+      }).then(() => {
+        this.$modal.msgSuccess('已保存为用例')
       }).catch(() => {})
     },
     openCloneDialog(row) {
@@ -849,6 +1149,54 @@ export default {
         this.$modal.msgSuccess('权限已保存')
         this.permissionOpen = false
       })
+    },
+    openAsToolDialog(row) {
+      this.asToolChainId = row.id
+      this.asToolForm = {
+        chainName: row.chainName,
+        toolCode: 'lf_' + row.chainName,
+        published: row.draftFlag !== '1' && row.status !== '1',
+        exposed: false,
+        agentChain: false,
+        exposeMcp: false
+      }
+      this.asToolOpen = true
+      getChainAsTool(row.id).then(res => {
+        const data = res.data || {}
+        this.asToolForm = {
+          chainName: data.chainName || row.chainName,
+          toolCode: data.toolCode || ('lf_' + row.chainName),
+          published: data.published !== false,
+          exposed: !!data.exposed,
+          agentChain: !!data.agentChain,
+          exposeMcp: !!data.exposeMcp && !data.agentChain
+        }
+      })
+    },
+    submitAsTool() {
+      exposeChainAsTool(this.asToolChainId, { exposeMcp: !!this.asToolForm.exposeMcp }).then(() => {
+        this.$modal.msgSuccess('已设为智能体工具，可在「AI能力 → 工具 / 智能体」绑定')
+        getChainAsTool(this.asToolChainId).then(res => {
+          const data = res.data || {}
+          this.asToolForm = {
+            chainName: data.chainName || this.asToolForm.chainName,
+            toolCode: data.toolCode || this.asToolForm.toolCode,
+            published: data.published !== false,
+            exposed: !!data.exposed,
+            agentChain: !!data.agentChain,
+            exposeMcp: !!data.exposeMcp && !data.agentChain
+          }
+        })
+      })
+    },
+    removeAsTool() {
+      this.$modal.confirm('取消后智能体将无法再调用该链路工具，是否继续？').then(() => {
+        return unexposeChainAsTool(this.asToolChainId)
+      }).then(() => {
+        this.$modal.msgSuccess('已取消')
+        this.asToolForm.exposed = false
+        this.asToolForm.exposeMcp = false
+      }).catch(() => {})
     }
   }
 }

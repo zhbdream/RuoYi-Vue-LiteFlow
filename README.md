@@ -56,24 +56,24 @@ AI 节点与普通 Java / 脚本节点可在同一条 EL 链路中混编，共�
 | 能力 | 说明 |
 |------|------|
 | **可视化编排** | AntV X6 画布，THEN / IF / SWITCH / WHEN / FOR / CATCH，EL 实时预览与双向同步 |
-| **规则生命周期** | 草稿 / 发布、版本快照、EL diff、回滚、克隆、导入导出、从模板创建 |
+| **规则生命周期** | 草稿 / 发布、版本快照、EL diff、回滚、克隆、导入导出、从模板创建、试跑用例与发布前回归 |
 | **执行与调试** | 链路试跑、EL 在线调试、步骤高亮、失败节点定位；AI 试跑结果卡片化展示 |
 | **脚本 & 组件** | Groovy / QLExpress 脚本管理，组件中心与引用分析 |
-| **开放集成** | `/liteflow/open/execute` + API Key / Token 鉴权 |
+| **开放集成** | `/liteflow/open/execute` + API Key / Token；已发布链路可登记为智能体 / MCP 工具 |
 | **权限 & 审计** | 菜单 RBAC、链路级执行/编排权限、规则变更审计 |
 | **监控** | 成功率、调用趋势、链路 Top、慢调用 / 失败 Top、慢节点 Top |
 | **决策路由** | `executeRouteChain` + 新客 / 老客促销路由 Demo |
 | **子链路** | 编排器引用已发布 chain，复用复杂流程 |
 | **生产只读** | `liteflow.readonly.enabled` 禁止改规则，执行仍可用 |
 | **定时执行** | Quartz `liteFlowTask.executeByName` 定时跑 chain |
-| **Webhook** | 执行完成 HTTP 回调（全局 / 链路级 URL） |
+| **Webhook** | 执行完成 HTTP 回调（HMAC 签名、失败重试、投递状态可在执行日志查看） |
 | **组件脚手架** | 组件中心一键生成继承式 / 声明式 Java 源码 |
 | **Re-Act Agent** | LiteFlow 官方 Re-Act 节点，模型 Key AES 加密入库 |
 | **LangChain4j** | AiServices + Tool、OpenAI 兼容 ChatModel（DeepSeek 等） |
 | **LangGraph4j** | StateGraph 多步推理与条件边，封装为单 LiteFlow 节点 |
 | **RAG 问答** | 本地 All-MiniLM Embedding + 内存向量库，内置售后知识库 Demo |
 | **内部 AI 助手** | 后台多轮对话 + SSE，复用模型管理与配额 |
-| **MCP Server** | AI Kit：系统能力封装为 Tools（ai-core / lf-governance），支持动态注册，HTTP Playground + 简化 stdio |
+| **MCP Server** | AI Kit：系统能力封装为 Tools（ai-core / lf-governance / liteflow 链路），支持动态注册，HTTP Playground + 简化 stdio |
 | **独立多 Agent** | `ai-kit-boot` 单进程（Chat/Risk/RAG/Ops），经 MCP 调用，与 LiteFlow 解耦 |
 | **AI Kit 配置面** | admin「AI能力」：助手 / 模型 / 工具 / 智能体 / 知识库 / 技能 / 记忆 / 上下文；`AgentRuntime` 配置驱动 |
 
@@ -270,10 +270,10 @@ npm run dev
 ### 6. 快速体验
 
 1. 登录 → **LiteFlow编排 → 链路管理**
-2. 对 `helloChain` 点击 **试跑**
+2. 对 `helloChain` 点击 **试跑**；也可点 **用例** 跑种子回归
 3. **AI能力 → 模型管理** 录入 DeepSeek Key 并设为默认后，可依次试跑 `agentRiskDemo` / `lc4jChatDemo` / `lc4jGraphDemo` / `lc4jRagDemo` / `aiKitAgentDemo`
 4. 打开 **AI能力 → AI助手**，进行多轮对话（复用同一默认模型）
-5. 点击 **编排** 打开可视化编辑器，拖拽组件并保存 / 发布
+5. 点击 **编排** 打开可视化编辑器，拖拽组件并保存 / 发布；发布草稿时可选择先跑启用中的用例
 
 ---
 
@@ -322,7 +322,7 @@ npm run dev
 1. **AI能力 → 模型管理**：新增模型并设为默认；或设置环境变量 `DEEPSEEK_API_KEY`
 2. 试跑链路 `agentRiskDemo`
 
-开放 API 默认 **禁止** 含 Agent 类节点的链路（`liteflow.open-api.allow-agent-chains=false`）。详见 [docs/AGENT.md](docs/AGENT.md)。
+开放 API 默认 **禁止** 含 Agent 类节点的链路。按链路放行：`liteflow.open-api.allow-agent-chain-names: [agentRiskDemo]`；或全局 `allow-agent-chains=true`。Java 示例：[docs/demo/OpenExecuteClient.java](docs/demo/OpenExecuteClient.java)。详见 [docs/AGENT.md](docs/AGENT.md)、[docs/API.md](docs/API.md)。
 
 ### 2. LangChain4j / LangGraph4j / RAG
 
@@ -376,7 +376,8 @@ RAG 默认知识库位于模块资源目录 `ruoyi-vue-liteflow-langchain/src/ma
 1. 导入 [sql/ry-vue.sql](sql/ry-vue.sql) 后**重新登录**，侧栏出现 **AI能力**
 2. 菜单：模型 / 工具 / 智能体 / 知识库 / 技能 / 记忆 / 上下文策略
 3. 智能体支持绑定工具、知识库、技能与上下文策略；试跑走 `POST /aikit/agent/{code}/run`
-4. 配置 `DEEPSEEK_API_KEY`，或在「模型管理」写入加密 Key
+4. 链路管理「更多 → 设为工具」把已发布 chain 登记为 `liteflow-chain`（种子已含 `lf_helloChain`，绑定到运维助手）
+5. 配置 `DEEPSEEK_API_KEY`，或在「模型管理」写入加密 Key
 
 可选独立进程：`ai-kit-boot`（:8091，`platform` profile）配置驱动试跑；MCP Playground 见 [docs/demo/mcp-ai-core/](docs/demo/mcp-ai-core/README.md)。
 
@@ -412,7 +413,7 @@ liteflow:
 | [docs/LANGCHAIN.md](docs/LANGCHAIN.md) | LangChain4j / LangGraph4j / RAG |
 | [docs/CHAT.md](docs/CHAT.md) | 内部 AI 助手（多轮对话 + SSE） |
 | [docs/MCP_AGENT.md](docs/MCP_AGENT.md) | AI Kit：MCP + 独立 Agent + 配置面 |
-| [docs/demo/](docs/demo/README.md) | Demo 请求样例 |
+| [docs/demo/](docs/demo/README.md) | Demo 请求样例、开放 API Java 客户端、Webhook 接收器 |
 
 Swagger：启动后访问 `/swagger-ui.html`，分组 **LiteFlow编排** / **LiteFlow开放API**。
 
@@ -489,11 +490,11 @@ docker compose up -d --build
 
 | 菜单 | 功能 |
 |------|------|
-| 链路管理 | CRUD、发布、试跑（含 AI 洞察）、克隆、导入导出、决策路由试跑 |
+| 链路管理 | CRUD、发布、试跑（含 AI 洞察）、试跑用例与发布前回归、克隆、导入导出、决策路由试跑 |
 | 可视化编排 | X6 编排器 |
 | 脚本管理 | 多语言脚本在线编辑 |
 | 组件中心 | 扫描组件、引用分析 |
-| 执行日志 | 步骤详情、失败定位 |
+| 执行日志 | 步骤详情、失败定位、Webhook 投递状态 |
 | 规则审计 | EL 变更记录 |
 | 版本历史 | 快照、diff、回滚 |
 | 监控仪表盘 | 成功率与 Top 排行 |
@@ -508,10 +509,44 @@ docker compose up -d --build
 A：保存为草稿，需在链路管理 **发布** 后才会热刷新。
 
 **Q：试跑提示链路未启用？**  
-A：确认链路 **已发布** 且状态为正常。
+A：确认链路 **已发布** 且状态为正常。用例回归使用当前库中的 EL，草稿也可跑。
+
+**Q：已有库没有 `lf_chain_case` 表？**  
+A：执行 [sql/ry-vue.sql](sql/ry-vue.sql) 中 `lf_chain_case` 建表与种子（`helloChain` / `orderProcess` / `agentRiskDemo`）。全新 Docker 首次启动会自动导入。
 
 **Q：开放 API 401？**  
-A：检查请求头 `X-LiteFlow-Api-Key` 或具备权限 `liteflow:open:execute` 的 Token。
+A：检查请求头 `X-LiteFlow-Api-Key` 或具备权限 `liteflow:open:execute` 的 Token。Java 示例见 [docs/demo/OpenExecuteClient.java](docs/demo/OpenExecuteClient.java)。
+
+**Q：已有库执行日志没有 Webhook 字段？**  
+A：执行：
+
+```sql
+ALTER TABLE lf_exec_log
+  ADD COLUMN webhook_url varchar(512) NULL COMMENT '回调URL' AFTER create_time,
+  ADD COLUMN webhook_status char(1) NULL COMMENT '空未投递 0投递中 1成功 2失败 3跳过' AFTER webhook_url,
+  ADD COLUMN webhook_attempts int NULL DEFAULT 0 COMMENT '回调尝试次数' AFTER webhook_status,
+  ADD COLUMN webhook_http_status int NULL COMMENT '最近一次HTTP状态' AFTER webhook_attempts,
+  ADD COLUMN webhook_message varchar(500) NULL COMMENT '最近一次回调说明' AFTER webhook_http_status,
+  ADD COLUMN webhook_time datetime NULL COMMENT '最近一次回调时间' AFTER webhook_message;
+```
+
+全新 Docker 首次启动会随 [sql/ry-vue.sql](sql/ry-vue.sql) 导入。
+
+**Q：已有库没有链路工具 `lf_helloChain`？**  
+A：执行：
+
+```sql
+INSERT INTO ai_tool (tool_code, tool_name, tool_type, description, input_schema_json, invoke_key, enabled, create_by, create_time, remark)
+SELECT 'lf_helloChain', '链路 入门三节点串行', 'liteflow-chain',
+  '执行已发布链路 helloChain（入门三节点串行）',
+  '{"type":"object","properties":{"name":{"type":"string","description":"问候名称"}},"required":[]}',
+  'helloChain', '1', 'system', NOW(), 'P1-4 种子'
+WHERE NOT EXISTS (SELECT 1 FROM ai_tool WHERE tool_code = 'lf_helloChain');
+INSERT IGNORE INTO ai_agent_tool (agent_id, tool_id, sort)
+SELECT 4, id, 3 FROM ai_tool WHERE tool_code = 'lf_helloChain';
+```
+
+也可在链路管理对已发布链点「更多 → 设为工具」，再到「AI能力 → 智能体」绑定。全新安装已含种子。
 
 **Q：决策路由无命中？**  
 A：确认库中存在 `newCustomerPromo` / `returningCustomerPromo`（namespace=`routeDemo`）且已发布，并对链路 **热刷新** 或重启后端。
@@ -536,7 +571,7 @@ A：可不配置模型 Key；未执行 AI Demo 链路时不影响普通业务 De
 
 | 里程碑 | 规划 | 状态 |
 |--------|------|------|
-| **生产闭环** | Docker 一键启动；链路试跑用例与发布前回归；开放 API 示例客户端；Webhook 签名与重试；已发布链路可作为智能体 / MCP 工具；规则包导入导出 | Docker 已支持；其余规划中 |
+| **生产闭环** | Docker 一键启动；链路试跑用例与发布前回归；开放 API 示例客户端；Webhook 签名与重试；已发布链路可作为智能体 / MCP 工具；规则包导入导出 | Docker、试跑用例、开放客户端与 Webhook、链路工具已支持；规则包规划中 |
 | **编排增强** | HTTP 等一等公民节点；TraceId 贯穿执行与回调；场景模板包；多模型供应商与配额可视；异步执行与幂等；失败告警；脚本沙箱；日志脱敏；版本灰度 | 规划中 |
 | **生态与规模** | 定时 / 入站 Webhook / MQ 触发；第三方节点扩展包；多实例与限流；规则同步 Git；助手辅助生成 / 解释 EL；租户隔离 | 规划中 |
 

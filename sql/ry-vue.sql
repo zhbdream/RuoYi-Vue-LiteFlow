@@ -48,7 +48,7 @@ CREATE TABLE `ai_agent`  (
 INSERT INTO `ai_agent` VALUES (1, 'chat', '通用对话', '你是内部助手，回答简洁、准确，使用中文。', NULL, 0.30, 1, '1', 'system', '2026-08-04 22:46:31', '', NULL, '种子');
 INSERT INTO `ai_agent` VALUES (2, 'risk', '风控分析', '你是风控分析助手。根据用户描述评估风险等级（低/中/高）并给出理由，使用中文。', NULL, 0.20, NULL, '1', 'system', '2026-08-04 22:46:31', '', NULL, '种子');
 INSERT INTO `ai_agent` VALUES (3, 'rag', '知识问答', '你是知识问答助手。请优先依据【参考资料】回答售后/政策类问题；资料不足时明确说明，使用中文。', NULL, 0.20, 1, '1', 'system', '2026-08-04 22:46:31', '', NULL, '种子');
-INSERT INTO `ai_agent` VALUES (4, 'ops', '运维助手', '你是编排中台运维助手。根据用户问题给出可操作的排查建议，不要编造不存在的链路，使用中文。', NULL, 0.30, NULL, '1', 'system', '2026-08-04 22:46:31', '', NULL, '种子');
+INSERT INTO `ai_agent` VALUES (4, 'ops', '运维助手', '你是编排中台运维助手。用户要求执行链路时请调用已绑定的链路工具（如 lf_helloChain，入参 name），把执行步骤告诉用户。不要编造不存在的链路，使用中文。', NULL, 0.30, NULL, '1', 'system', '2026-08-04 22:46:31', '', NULL, '种子');
 
 -- ----------------------------
 -- Table structure for ai_agent_knowledge
@@ -129,6 +129,7 @@ INSERT INTO `ai_agent_tool` VALUES (3, 3, 0);
 INSERT INTO `ai_agent_tool` VALUES (4, 1, 2);
 INSERT INTO `ai_agent_tool` VALUES (4, 4, 0);
 INSERT INTO `ai_agent_tool` VALUES (4, 5, 1);
+INSERT INTO `ai_agent_tool` VALUES (4, 7, 3);
 
 -- ----------------------------
 -- Table structure for ai_context_policy
@@ -322,7 +323,7 @@ CREATE TABLE `ai_tool`  (
   `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键',
   `tool_code` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '工具编码',
   `tool_name` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '工具名称',
-  `tool_type` varchar(16) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT 'local' COMMENT 'local|mcp',
+  `tool_type` varchar(16) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT 'local' COMMENT 'local|mcp|liteflow-chain',
   `description` varchar(512) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '描述',
   `input_schema_json` text CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL COMMENT 'JSON Schema',
   `invoke_key` varchar(256) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT 'local=bean/方法键；mcp=tool 名',
@@ -335,7 +336,7 @@ CREATE TABLE `ai_tool`  (
   `remark` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
   PRIMARY KEY (`id`) USING BTREE,
   UNIQUE INDEX `uk_ai_tool_code`(`tool_code` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 7 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = 'AI Kit 工具登记' ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 8 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = 'AI Kit 工具登记' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of ai_tool
@@ -346,6 +347,7 @@ INSERT INTO `ai_tool` VALUES (3, 'rag_ask', '知识问答', 'mcp', 'MCP rag_ask'
 INSERT INTO `ai_tool` VALUES (4, 'list_chains', '链路列表', 'mcp', '治理 Demo list_chains', NULL, 'list_chains', 'lf-governance', '1', 'system', '2026-08-04 22:46:31', '', NULL, NULL);
 INSERT INTO `ai_tool` VALUES (5, 'dashboard_summary', '监控摘要', 'mcp', '治理 Demo dashboard_summary', NULL, 'dashboard_summary', 'lf-governance', '1', 'system', '2026-08-04 22:46:31', '', NULL, NULL);
 INSERT INTO `ai_tool` VALUES (6, 'echo_ping', '回声探测', 'mcp', '动态注册示例：原样回显参数', NULL, 'echo', 'ai-core', '1', 'system', '2026-08-04 23:27:01', '', NULL, 'Phase C dynamic');
+INSERT INTO `ai_tool` VALUES (7, 'lf_helloChain', '链路 入门三节点串行', 'liteflow-chain', '执行已发布链路 helloChain（入门三节点串行）', '{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\",\"description\":\"问候名称\"}},\"required\":[]}', 'helloChain', NULL, '1', 'system', '2026-08-19 19:00:00', '', NULL, 'P1-4 种子');
 
 -- ----------------------------
 -- Table structure for gen_table
@@ -615,6 +617,39 @@ CREATE TABLE `lf_chat_session`  (
 -- ----------------------------
 
 -- ----------------------------
+-- Table structure for lf_chain_case
+-- ----------------------------
+DROP TABLE IF EXISTS `lf_chain_case`;
+CREATE TABLE `lf_chain_case`  (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键',
+  `chain_name` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '链路ID',
+  `case_name` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '用例名称',
+  `param_json` text CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '请求参数JSON（execute body）',
+  `expect_success` char(1) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '1' COMMENT '期望成功 0否 1是',
+  `expect_step_contains` varchar(512) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '可选，executeStepStr 应包含',
+  `sort_order` int NULL DEFAULT 0 COMMENT '排序',
+  `status` char(1) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '0' COMMENT '0正常 1停用',
+  `last_run_success` char(1) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '最近回归 0失败 1通过',
+  `last_run_log_id` bigint NULL DEFAULT NULL COMMENT '最近一次 lf_exec_log.id',
+  `last_run_message` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '最近一次说明',
+  `last_run_time` datetime NULL DEFAULT NULL COMMENT '最近一次执行时间',
+  `create_by` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT '',
+  `create_time` datetime NULL DEFAULT NULL,
+  `update_by` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT '',
+  `update_time` datetime NULL DEFAULT NULL,
+  `remark` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  PRIMARY KEY (`id`) USING BTREE,
+  INDEX `idx_lf_chain_case_name`(`chain_name` ASC) USING BTREE
+) ENGINE = InnoDB AUTO_INCREMENT = 4 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = 'LiteFlow链路试跑用例' ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Records of lf_chain_case
+-- ----------------------------
+INSERT INTO `lf_chain_case` VALUES (1, 'helloChain', '入门问候', '{\"name\":\"RuoYi\"}', '1', 'helloA', 0, '0', NULL, NULL, NULL, NULL, 'admin', '2026-08-19 18:00:00', '', NULL, 'P1-2 种子');
+INSERT INTO `lf_chain_case` VALUES (2, 'orderProcess', '微信下单', '{\"userId\":1001,\"skuId\":\"SKU-001\",\"quantity\":2,\"payType\":\"wechat\",\"couponCode\":\"SAVE10\"}', '1', 'validateOrder', 0, '0', NULL, NULL, NULL, NULL, 'admin', '2026-08-19 18:00:00', '', NULL, 'P1-2 种子');
+INSERT INTO `lf_chain_case` VALUES (3, 'agentRiskDemo', '结账风控', '{\"orderId\":\"ORD-AGENT-1001\",\"userId\":1001,\"userType\":\"NEW\",\"amount\":1299.00,\"scene\":\"checkout\"}', '1', NULL, 0, '0', NULL, NULL, NULL, NULL, 'admin', '2026-08-19 18:00:00', '', NULL, 'P1-2 种子，需模型 Key');
+
+-- ----------------------------
 -- Table structure for lf_exec_log
 -- ----------------------------
 DROP TABLE IF EXISTS `lf_exec_log`;
@@ -635,6 +670,12 @@ CREATE TABLE `lf_exec_log`  (
   `failed_node_id` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '失败节点ID',
   `create_by` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT '' COMMENT '执行人',
   `create_time` datetime NULL DEFAULT NULL COMMENT '执行时间',
+  `webhook_url` varchar(512) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '回调URL',
+  `webhook_status` char(1) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '空未投递 0投递中 1成功 2失败 3跳过',
+  `webhook_attempts` int NULL DEFAULT 0 COMMENT '回调尝试次数',
+  `webhook_http_status` int NULL DEFAULT NULL COMMENT '最近一次HTTP状态',
+  `webhook_message` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '最近一次回调说明',
+  `webhook_time` datetime NULL DEFAULT NULL COMMENT '最近一次回调时间',
   PRIMARY KEY (`id`) USING BTREE,
   INDEX `idx_request_id`(`request_id` ASC) USING BTREE,
   INDEX `idx_chain_name`(`chain_name` ASC) USING BTREE,

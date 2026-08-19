@@ -1,5 +1,16 @@
 # Changelog
 
+## [Unreleased]
+
+### P1-4 已发布链路变为 Tool
+
+- 链路管理「更多 → 设为工具」登记 `liteflow-chain`（编码 `lf_{chainName}`，入参 schema 来自试跑用例）
+- admin 内 `LocalToolHandler` 直接执行已发布链路，不强制 MCP `:8090`；权限复用链路级「可执行」
+- 可选同步开放 MCP（`mcp_server_key=liteflow`），经开放 API 调用；含 Agent 的链路默认禁止
+- 智能体运行时把 `input_schema_json` 编进 Tool Specification；种子 `lf_helloChain` 绑定运维助手
+
+---
+
 ## [v3.10.0] — 2026-08-04
 
 ### Phase 8：AI Kit 配置面（开源里程碑）

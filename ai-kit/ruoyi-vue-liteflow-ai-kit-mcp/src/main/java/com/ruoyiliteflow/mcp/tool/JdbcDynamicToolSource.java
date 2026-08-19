@@ -14,7 +14,7 @@ import com.ruoyiliteflow.mcp.tool.McpToolRegistry.DynamicTool;
 import com.ruoyiliteflow.mcp.tool.McpToolRegistry.DynamicToolSource;
 
 /**
- * 从 ai_tool 表加载启用的 mcp 类型工具（与 admin/platform 共享库）。
+ * 从 ai_tool 表加载启用的 mcp / liteflow-chain（勾选同步 MCP）工具（与 admin/platform 共享库）。
  */
 @Component
 @ConditionalOnProperty(prefix = "ruoyi.mcp.dynamic-tools", name = "enabled", havingValue = "true")
@@ -36,8 +36,9 @@ public class JdbcDynamicToolSource implements DynamicToolSource
         try
         {
             List<Map<String, Object>> rows = jdbcTemplate.queryForList(
-                    "select tool_code, tool_name, description, invoke_key, mcp_server_key "
-                            + "from ai_tool where enabled = '1' and tool_type = 'mcp'");
+                    "select tool_code, tool_name, description, invoke_key, mcp_server_key, tool_type "
+                            + "from ai_tool where enabled = '1' and (tool_type = 'mcp' "
+                            + "or (tool_type = 'liteflow-chain' and mcp_server_key is not null and mcp_server_key <> ''))");
             for (Map<String, Object> row : rows)
             {
                 String code = str(row.get("tool_code"));
@@ -55,8 +56,13 @@ public class JdbcDynamicToolSource implements DynamicToolSource
                 {
                     desc = str(row.get("tool_name"));
                 }
+                String type = str(row.get("tool_type"));
                 String server = str(row.get("mcp_server_key"));
-                if (StringUtils.isEmpty(server))
+                if ("liteflow-chain".equalsIgnoreCase(type))
+                {
+                    server = "liteflow";
+                }
+                else if (StringUtils.isEmpty(server))
                 {
                     server = "ai-core";
                 }

@@ -11,7 +11,7 @@
 |------|----------|------|--------------|
 | 内部执行 | `/liteflow/execute` | 若依登录 + 菜单权限 | `liteflow` |
 | 开放执行 | `/liteflow/open` | API Key 或 Token | `liteflow-open` |
-| 链路管理 | `/liteflow/chain` | CRUD / 发布 / 克隆等 | `liteflow` |
+| 链路管理 | `/liteflow/chain` | CRUD / 发布 / 用例回归 / 克隆等 | `liteflow` |
 | 编排器 | `/liteflow/el` | EL 校验 / 在线调试 | `liteflow` |
 | 组件 | `/liteflow/component` | 可编排组件列表 | `liteflow` |
 | 执行日志 | `/liteflow/log` | 历史记录与步骤 | `liteflow` |
@@ -77,6 +77,12 @@ curl -X POST "http://localhost:8080/liteflow/open/execute/helloChain" \
   -H "Content-Type: application/json" \
   -H "X-LiteFlow-Api-Key: ruoyi-liteflow-open-key-change-me" \
   -d '{"name": "RuoYi"}'
+```
+
+PowerShell（JSON 必须用单引号，不要写 `\"`）：
+
+```powershell
+curl.exe -X POST "http://localhost:8080/liteflow/open/execute/helloChain" -H "Content-Type: application/json" -H "X-LiteFlow-Api-Key: ruoyi-liteflow-open-key-change-me" -d '{"name":"RuoYi"}'
 ```
 
 **orderProcess 示例：**
@@ -156,13 +162,23 @@ liteflow:
     api-key: ruoyi-liteflow-open-key-change-me   # 生产环境务必修改
     header-name: X-LiteFlow-Api-Key
     allow-agent-chains: false                    # 含 Agent 链路默认禁止开放执行
+    allow-agent-chain-names: []                  # 按链路放行，如 [agentRiskDemo]
 ```
 
 前端可通过 `GET /liteflow/config` 读取 `{ readonly, readonlyMessage, agentConfigured, openApiAllowAgentChains }`。
 
+Java 最小客户端（JDK 11+，无第三方库）：[docs/demo/OpenExecuteClient.java](demo/OpenExecuteClient.java)
+
+```bash
+java docs/demo/OpenExecuteClient.java
+java docs/demo/OpenExecuteClient.java helloChain "{\"name\":\"RuoYi\"}"
+```
+
+环境变量：`LITEFLOW_BASE_URL`（默认 `http://localhost:8080`）、`LITEFLOW_API_KEY`。
+
 ### Webhook 回调
 
-链路执行（入库后）可异步 HTTP POST 结果 JSON。
+链路执行（入库后）异步 HTTP POST 结果 JSON。失败不影响主流程。
 
 ```yaml
 liteflow:
@@ -172,11 +188,34 @@ liteflow:
     only-on-failure: false
     connect-timeout-ms: 3000
     read-timeout-ms: 5000
+    secret: ${LITEFLOW_WEBHOOK_SECRET:}   # 非空则带 HMAC-SHA256 签名
+    max-attempts: 3                       # 含首次
+    retry-backoff-ms: 1000                # 指数退避：1s、2s、4s…
 ```
 
 优先级：**链路 `webhookUrl` > 全局 `liteflow.webhook.url`（需 enabled）**。EL 在线调试不回调。
 
+**签名：** 配置 `secret` 后，请求头 `X-LiteFlow-Signature: sha256=<hex>`，对 **原始 JSON body** 做 HMAC-SHA256。接收方应用恒定时间比较校验。未配置密钥则不带头。
+
+**重试：** 网络错误、超时、HTTP 408/429/5xx 会重试；其它 4xx 不重试。投递状态写在对应 `lf_exec_log`：`webhook_status`（`0` 投递中 / `1` 成功 / `2` 失败 / `3` 跳过）、`webhook_attempts`、`webhook_http_status`、`webhook_message`。执行日志详情可查。
+
+**本地观察重试：**
+
+```bash
+java docs/demo/WebhookEchoServer.java 9099 --fail
+```
+
+链路管理把该链路 Webhook 填 `http://127.0.0.1:9099/hook`，试跑后打开 **执行日志** 详情，可见多次尝试与最终失败。去掉 `--fail` 则校验签名并返回 200。
+
 Payload 字段示例：`event`、`chainName`、`requestId`、`success`、`durationMs`、`executeStepStr`、`failedNodeId`、`logId`、`param`。
+
+### 已发布链路作为智能体 / MCP 工具
+
+链路管理「更多 → 设为工具」会把已发布 chain 登记为 `ai_tool.tool_type=liteflow-chain`（编码 `lf_{chainName}`，入参 schema 来自试跑用例）。后台助手 / 智能体在 admin 内本地执行，**不必**启动 MCP `:8090`。权限复用链路级「可执行」。
+
+勾选「同步开放 MCP」后，`mcp_server_key=liteflow`，独立 MCP 通过开放 API `POST /liteflow/open/execute/{chainName}` 调用。含 Agent 的链路默认禁止同步到开放 MCP（与开放 API 策略一致）。
+
+种子：`lf_helloChain` 已绑定运维智能体 `ops`。体验：AI助手选择「运维助手」，发送「用 name=RuoYi 执行 helloChain」。
 
 ### 定时执行（Quartz）
 
@@ -408,6 +447,9 @@ Authorization: Bearer <token>
 | `paramJson` | 请求参数 |
 | `contextJson` | 上下文结果 |
 | `durationMs` | 耗时 |
+| `webhookStatus` | 回调：空未投递 / `0`投递中 / `1`成功 / `2`失败 / `3`跳过 |
+| `webhookAttempts` | 回调尝试次数 |
+| `webhookMessage` | 最近一次回调说明 |
 
 前端支持从日志 **「定位失败」** 跳转编排器，绿色高亮已执行步骤、红色高亮失败节点。
 
@@ -443,13 +485,35 @@ Authorization: Bearer <token>
 
 ---
 
-## 八、常用内部 API 速查
+## 八、试跑用例 API
+
+每条链路可保存一组入参 + 可选期望；回归使用**当前库中 EL**（含草稿），不要求已发布。结果写入 `lf_chain_case.last_run_*`，并记 `lf_exec_log`。
+
+| 接口 | 方法 | 权限 | 说明 |
+|------|------|------|------|
+| `/liteflow/chain/case/list` | GET | `liteflow:chain:query` | 按 `chainName` 分页列表 |
+| `/liteflow/chain/case/{id}` | GET | `liteflow:chain:query` | 详情 |
+| `/liteflow/chain/case` | POST | `liteflow:chain:edit` | 新增 |
+| `/liteflow/chain/case` | PUT | `liteflow:chain:edit` | 修改 |
+| `/liteflow/chain/case/{ids}` | DELETE | `liteflow:chain:edit` | 删除 |
+| `/liteflow/chain/case/run/{id}` | POST | `liteflow:execute` | 跑单条 |
+| `/liteflow/chain/case/runAll/{chainName}` | POST | `liteflow:execute` | 跑该链路全部启用用例 |
+
+**用例字段：** `chainName`、`caseName`、`paramJson`（与试跑 body 相同）、`expectSuccess`（`1` 成功 / `0` 失败）、`expectStepContains`（可选，步骤串包含）、`status`（`0` 启用 / `1` 停用）。
+
+**全部回归响应：** `{ total, passed, failed, items: [{ caseId, caseName, passed, message, logId }] }`。发布前可先调 `runAll`，`failed > 0` 则中止发布。
+
+---
+
+## 九、常用内部 API 速查
 
 | 接口 | 方法 | 权限 |
 |------|------|------|
 | `/liteflow/chain/list` | GET | `liteflow:chain:list` |
 | `/liteflow/chain/{id}` | GET | `liteflow:chain:query` |
 | `/liteflow/chain/publish/{id}` | POST | `liteflow:chain:edit` |
+| `/liteflow/chain/case/list` | GET | `liteflow:chain:query` |
+| `/liteflow/chain/case/runAll/{chainName}` | POST | `liteflow:execute` |
 | `/liteflow/chain/reload/{chainName}` | POST | `liteflow:chain:reload` |
 | `/liteflow/component/list` | GET | `liteflow:editor:view` |
 | `/liteflow/el/validate` | POST | `liteflow:chain:edit` |
@@ -459,7 +523,7 @@ Authorization: Bearer <token>
 
 ---
 
-## 九、Demo 样例请求
+## 十、Demo 样例请求
 
 样例 JSON 位于 `docs/demo/`：
 
@@ -477,7 +541,7 @@ Authorization: Bearer <token>
 
 ---
 
-## 十、错误码说明
+## 十一、错误码说明
 
 | HTTP / Ajax code | 场景 |
 |------------------|------|
@@ -488,7 +552,7 @@ Authorization: Bearer <token>
 
 ---
 
-## 十一、安全建议
+## 十二、安全建议
 
 1. **生产环境** 修改默认 `api-key`，并通过环境变量或外部配置注入
 2. API Key 仅用于服务端调用，不要写入前端代码

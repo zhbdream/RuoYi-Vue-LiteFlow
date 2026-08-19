@@ -41,7 +41,8 @@ Demo：[demo/mcp-ai-core/](demo/mcp-ai-core/)、[demo/agent/](demo/agent/)
 ```text
 AiKitBoot(:8091)  --MCP HTTP-->  ai-kit-mcp(:8090)
                                     ├─ ai-core Tools
-                                    └─ lf-governance Tools（Demo 数据）
+                                    ├─ lf-governance Tools（Demo 数据）
+                                    └─ liteflow Tools（可选，转发开放 API）
 ```
 
 Boot API：
@@ -58,6 +59,8 @@ Boot API：
 **ai-core：** `list_models` / `get_default_model` / `chat_completion` / `risk_analyze` / `rag_ask` / `quota_status`  
 
 **lf-governance（Demo）：** `list_chains` / `get_chain` / `list_scripts` / `query_exec_logs` / `dashboard_summary`  
+
+**liteflow（可选）：** 已发布链路勾选「同步开放 MCP」后出现，如 `lf_helloChain`。MCP 转发到 admin 开放 API；含 Agent 的链路默认不暴露。admin 内助手不依赖本项。
 
 **lf-runtime / sys：** 默认关。
 

@@ -32,6 +32,26 @@ public class AiToolServiceImpl implements IAiToolService
     }
 
     @Override
+    public AiTool selectAiToolByCode(String toolCode)
+    {
+        if (StringUtils.isEmpty(toolCode))
+        {
+            return null;
+        }
+        return aiToolMapper.selectAiToolByCode(toolCode);
+    }
+
+    @Override
+    public AiTool selectAiToolByTypeAndInvokeKey(String toolType, String invokeKey)
+    {
+        if (StringUtils.isEmpty(toolType) || StringUtils.isEmpty(invokeKey))
+        {
+            return null;
+        }
+        return aiToolMapper.selectAiToolByTypeAndInvokeKey(toolType, invokeKey);
+    }
+
+    @Override
     public int insertAiTool(AiTool tool)
     {
         normalize(tool);
@@ -66,13 +86,14 @@ public class AiToolServiceImpl implements IAiToolService
             }
         }
         int rows = aiToolMapper.updateAiTool(tool);
-        if ("mcp".equalsIgnoreCase(tool.getToolType()) && !"1".equals(tool.getEnabled()))
-        {
-            syncUnregister(StringUtils.isEmpty(tool.getToolCode()) ? db.getToolCode() : tool.getToolCode());
-        }
-        else
+        String code = StringUtils.isEmpty(tool.getToolCode()) ? db.getToolCode() : tool.getToolCode();
+        if (shouldSyncToMcp(tool) && "1".equals(tool.getEnabled()))
         {
             syncRegister(tool);
+        }
+        else if (shouldSyncToMcp(db) || shouldSyncToMcp(tool))
+        {
+            syncUnregister(code);
         }
         return rows;
     }
@@ -85,7 +106,7 @@ public class AiToolServiceImpl implements IAiToolService
             for (Long id : ids)
             {
                 AiTool t = aiToolMapper.selectAiToolById(id);
-                if (t != null && "mcp".equalsIgnoreCase(t.getToolType()))
+                if (t != null && shouldSyncToMcp(t))
                 {
                     syncUnregister(t.getToolCode());
                 }
@@ -108,6 +129,20 @@ public class AiToolServiceImpl implements IAiToolService
         {
             mcpDynamicToolSyncClient.unregister(toolCode);
         }
+    }
+
+    private static boolean shouldSyncToMcp(AiTool tool)
+    {
+        if (tool == null)
+        {
+            return false;
+        }
+        if ("mcp".equalsIgnoreCase(tool.getToolType()))
+        {
+            return true;
+        }
+        return "liteflow-chain".equalsIgnoreCase(tool.getToolType())
+                && StringUtils.isNotEmpty(tool.getMcpServerKey());
     }
 
     private void normalize(AiTool tool)

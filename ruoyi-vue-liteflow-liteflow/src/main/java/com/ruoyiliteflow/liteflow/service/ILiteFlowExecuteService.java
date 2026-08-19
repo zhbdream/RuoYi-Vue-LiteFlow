@@ -17,6 +17,9 @@ public interface ILiteFlowExecuteService
 
     LiteFlowExecuteResultVo executeWithEl(String elData, Object param, String contextClass, String createBy);
 
+    /** 用指定 EL 执行并按 chainName 记日志（试跑用例回归草稿） */
+    LiteFlowExecuteResultVo executeWithEl(String chainName, String elData, Object param, String contextClass, String createBy);
+
     LiteFlowRouteResultVo executeRouteChain(String namespace, Object param, String contextClass, String createBy);
 
     List<LiteFlowComponentVo> listComponents();

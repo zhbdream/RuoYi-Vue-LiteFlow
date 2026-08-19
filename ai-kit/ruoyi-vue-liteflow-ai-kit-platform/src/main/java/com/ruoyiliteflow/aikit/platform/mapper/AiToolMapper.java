@@ -12,6 +12,8 @@ public interface AiToolMapper
 
     AiTool selectAiToolByCode(String toolCode);
 
+    AiTool selectAiToolByTypeAndInvokeKey(@Param("toolType") String toolType, @Param("invokeKey") String invokeKey);
+
     List<AiTool> selectEnabledByCodes(@Param("codes") List<String> codes);
 
     List<AiTool> selectEnabledMcpTools();

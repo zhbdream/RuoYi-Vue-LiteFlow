@@ -50,7 +50,7 @@
           <label>Server</label>
           <select id="server">
             <option value="ai-core">ai-core</option>
-            <option value="lf-governance">lf-governance</option>
+            <option value="liteflow">liteflow</option>
           </select>
         </div>
       </div>
@@ -96,6 +96,8 @@
       });
       if (server === 'lf-governance') {
         document.getElementById('args').value = '{\n  "chainId": "helloChain",\n  "limit": 5\n}';
+      } else if (server === 'liteflow') {
+        document.getElementById('args').value = '{\n  "name": "RuoYi"\n}';
       }
     }
     async function callTool() {

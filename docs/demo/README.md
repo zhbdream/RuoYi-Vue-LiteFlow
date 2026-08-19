@@ -26,6 +26,38 @@ X-LiteFlow-Api-Key: ruoyi-liteflow-open-key-change-me
 
 也可使用若依 `Authorization: Bearer <token>`，且账号需具备 `liteflow:open:execute` 权限。
 
+含 Agent 节点的链路默认禁止开放执行。按链路放行：
+
+```yaml
+liteflow:
+  open-api:
+    allow-agent-chains: false
+    allow-agent-chain-names:
+      - agentRiskDemo
+```
+
+或全局 `allow-agent-chains: true`（会产生 Token 费用，生产慎用）。
+
+## Java 最小客户端
+
+[OpenExecuteClient.java](OpenExecuteClient.java)（JDK 11+）：
+
+```bash
+java OpenExecuteClient.java
+java OpenExecuteClient.java helloChain "{\"name\":\"RuoYi\"}"
+```
+
+## Webhook 本地接收
+
+[WebhookEchoServer.java](WebhookEchoServer.java)：打印 body、校验 `X-LiteFlow-Signature`；`--fail` 固定返回 500 以观察重试。
+
+```bash
+java WebhookEchoServer.java 9099
+java WebhookEchoServer.java 9099 --fail
+```
+
+链路 Webhook 填 `http://127.0.0.1:9099/hook`，密钥与 `liteflow.webhook.secret` 一致。
+
 ## 决策路由（Phase 3，仅内部 API）
 
 ```http

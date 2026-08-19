@@ -47,11 +47,13 @@ public class McpAiCoreController
         data.put("enabled", properties.isEnabled());
         data.put("transport", properties.getTransport());
         data.put("headerName", properties.getAuth().getHeaderName());
-        data.put("servers", Map.of(
-                "ai-core", properties.getServers().isAiCore(),
-                "lf-governance", properties.getServers().isLfGovernance(),
-                "lf-runtime", properties.getServers().isLfRuntime(),
-                "sys", properties.getServers().isSys()));
+        Map<String, Object> servers = new HashMap<>();
+        servers.put("ai-core", properties.getServers().isAiCore());
+        servers.put("lf-governance", properties.getServers().isLfGovernance());
+        servers.put("lf-runtime", properties.getServers().isLfRuntime());
+        servers.put("sys", properties.getServers().isSys());
+        servers.put("liteflow", true);
+        data.put("servers", servers);
         data.put("toolsPath", "GET /mcp/tools 或 /mcp/{server}/tools");
         data.put("callPath", "POST /mcp/{server}/tools/{toolName}");
         data.put("dynamicToolsPath", "POST|DELETE /mcp/dynamic-tools");
@@ -92,6 +94,18 @@ public class McpAiCoreController
     {
         ensureGovernance();
         return AjaxResult.success(governanceMcpTools.call(toolName, body));
+    }
+
+    @GetMapping("/liteflow/tools")
+    public AjaxResult listLiteflowTools()
+    {
+        return AjaxResult.success(toolRegistry.listByServer("liteflow"));
+    }
+
+    @PostMapping("/liteflow/tools/{toolName}")
+    public AjaxResult callLiteflow(@PathVariable String toolName, @RequestBody(required = false) JSONObject body)
+    {
+        return AjaxResult.success(toolRegistry.callDynamic(toolName, body));
     }
 
     @GetMapping(value = "/ai-core/sse", produces = MediaType.TEXT_EVENT_STREAM_VALUE)

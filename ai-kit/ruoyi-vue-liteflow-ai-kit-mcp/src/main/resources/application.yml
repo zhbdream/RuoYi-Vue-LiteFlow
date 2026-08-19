@@ -17,9 +17,14 @@ ruoyi:
       lf-governance: true
       lf-runtime: false
       sys: false
-    # 默认关闭；启用 profile=dynamic 或显式设为 true，并从 DB 加载 ai_tool(mcp)
+    # 默认关闭；启用 profile=dynamic 或显式设为 true，并从 DB 加载 ai_tool(mcp / liteflow-chain)
     dynamic-tools:
       enabled: false
+    # 已发布链路工具走 admin 开放 API（含 Agent 的链路由开放 API 默认拦截）
+    liteflow-open:
+      base-url: ${LITEFLOW_OPEN_BASE_URL:http://127.0.0.1:8080}
+      api-key: ${LITEFLOW_OPEN_API_KEY:ruoyi-liteflow-open-key-change-me}
+      header-name: X-LiteFlow-Api-Key
 
 spring:
   application:

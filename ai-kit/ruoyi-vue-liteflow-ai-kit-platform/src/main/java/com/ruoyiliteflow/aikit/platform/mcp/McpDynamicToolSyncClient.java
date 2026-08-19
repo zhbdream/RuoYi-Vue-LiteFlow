@@ -38,7 +38,7 @@ public class McpDynamicToolSyncClient
 
     public void register(AiTool tool)
     {
-        if (tool == null || !"mcp".equalsIgnoreCase(tool.getToolType()) || !"1".equals(tool.getEnabled()))
+        if (tool == null || !"1".equals(tool.getEnabled()) || !isMcpSyncable(tool))
         {
             return;
         }
@@ -51,7 +51,7 @@ public class McpDynamicToolSyncClient
             Map<String, Object> body = new LinkedHashMap<>();
             body.put("name", tool.getToolCode());
             body.put("description", StringUtils.isEmpty(tool.getDescription()) ? tool.getToolName() : tool.getDescription());
-            body.put("server", StringUtils.isEmpty(tool.getMcpServerKey()) ? "ai-core" : tool.getMcpServerKey());
+            body.put("server", resolveServer(tool));
             body.put("invokeKey", tool.getInvokeKey());
             HttpHeaders headers = authHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
@@ -81,6 +81,25 @@ public class McpDynamicToolSyncClient
         {
             log.warn("MCP dynamic unregister failed for {}: {}", toolCode, ex.getMessage());
         }
+    }
+
+    private static boolean isMcpSyncable(AiTool tool)
+    {
+        if ("mcp".equalsIgnoreCase(tool.getToolType()))
+        {
+            return true;
+        }
+        return "liteflow-chain".equalsIgnoreCase(tool.getToolType())
+                && StringUtils.isNotEmpty(tool.getMcpServerKey());
+    }
+
+    private static String resolveServer(AiTool tool)
+    {
+        if ("liteflow-chain".equalsIgnoreCase(tool.getToolType()))
+        {
+            return "liteflow";
+        }
+        return StringUtils.isEmpty(tool.getMcpServerKey()) ? "ai-core" : tool.getMcpServerKey();
     }
 
     private HttpHeaders authHeaders()

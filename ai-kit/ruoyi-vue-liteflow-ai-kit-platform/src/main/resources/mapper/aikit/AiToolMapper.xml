@@ -45,6 +45,13 @@
         <include refid="selectVo"/> where tool_code = #{toolCode}
     </select>
 
+    <select id="selectAiToolByTypeAndInvokeKey" resultMap="AiToolResult">
+        <include refid="selectVo"/>
+        where tool_type = #{toolType} and invoke_key = #{invokeKey}
+        order by id desc
+        limit 1
+    </select>
+
     <select id="selectEnabledByCodes" resultMap="AiToolResult">
         <include refid="selectVo"/>
         where enabled = '1'

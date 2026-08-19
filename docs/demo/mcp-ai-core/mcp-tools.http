@@ -43,3 +43,12 @@ Content-Type: application/json
 X-MCP-Api-Key: ruoyi-mcp-key-change-me
 
 {}
+
+### LiteFlow chain tool (need exposeMcp + admin :8080)
+POST http://localhost:8090/mcp/liteflow/tools/lf_helloChain
+Content-Type: application/json
+X-MCP-Api-Key: ruoyi-mcp-key-change-me
+
+{
+  "name": "RuoYi"
+}

@@ -225,3 +225,72 @@ export function saveChainPermission(data) {
     data: data
   })
 }
+
+export function listChainCase(query) {
+  return request({
+    url: '/liteflow/chain/case/list',
+    method: 'get',
+    params: query
+  })
+}
+
+export function addChainCase(data) {
+  return request({
+    url: '/liteflow/chain/case',
+    method: 'post',
+    data: data
+  })
+}
+
+export function updateChainCase(data) {
+  return request({
+    url: '/liteflow/chain/case',
+    method: 'put',
+    data: data
+  })
+}
+
+export function delChainCase(ids) {
+  return request({
+    url: '/liteflow/chain/case/' + ids,
+    method: 'delete'
+  })
+}
+
+export function runChainCase(id) {
+  return request({
+    url: '/liteflow/chain/case/run/' + id,
+    method: 'post',
+    timeout: 180000
+  })
+}
+
+export function runAllChainCases(chainName) {
+  return request({
+    url: '/liteflow/chain/case/runAll/' + encodeURIComponent(chainName),
+    method: 'post',
+    timeout: 180000
+  })
+}
+
+export function getChainAsTool(id) {
+  return request({
+    url: '/liteflow/chain/as-tool/' + id,
+    method: 'get'
+  })
+}
+
+export function exposeChainAsTool(id, data) {
+  return request({
+    url: '/liteflow/chain/as-tool/' + id,
+    method: 'post',
+    data: data || {}
+  })
+}
+
+export function unexposeChainAsTool(id) {
+  return request({
+    url: '/liteflow/chain/as-tool/' + id,
+    method: 'delete'
+  })
+}
