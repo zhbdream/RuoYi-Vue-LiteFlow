@@ -20,7 +20,7 @@
 </p>
 
 <p align="center">
-  拖拽画流程 · EL 双向同步 · 规则热更新 · Re-Act Agent · LangChain4j / LangGraph4j · RAG · 内部 AI 助手 · AI Kit 配置面 · MCP / 多 Agent · 执行监控 · 开放 API
+  拖拽画流程 · EL 双向同步 · 规则热更新 · 试跑用例 · 开放 API / Webhook · 链路作智能体工具 · Re-Act Agent · LangChain4j / LangGraph4j · RAG · 内部 AI 助手 · AI Kit · MCP · 执行监控
 </p>
 
 > Gitee / GitHub 内容同步镜像。提 Issue、PR 任选其一即可。
@@ -44,6 +44,8 @@
 AI 节点与普通 Java / 脚本节点可在同一条 EL 链路中混编，共用模型配置、日配额、执行日志与试跑洞察展示。另提供**不依赖 LiteFlow 的 MCP / Agent 独立进程**，便于二次开发与单独部署。
 
 适合作为团队内部的 **规则编排中台**，或二次开发动态定价、风控策略、智能客服、知识问答、**MCP / Agent 助手**等场景的基础工程。
+
+生产向能力已具备：**Docker 一键部署**、**试跑用例与发布前回归**、**开放执行 API + Webhook（签名 / 重试）**、**已发布链路登记为智能体 / MCP 工具**。外部业务系统走开放 API；智能体走「设为工具」（默认本系统，可选同步 MCP）。
 
 > **定位说明：** 本项目以 **LiteFlow 逻辑编排** 为骨架；AI 能力通过独立模块接入，可按需启用。MCP / Agent / 配置面与编排引擎解耦，可单独启动或嵌入 admin。内部 AI 助手与 AI Kit 试跑面向后台运维 / 开发自用，并非对标豆包 / Kimi 的独立聊天产品。
 
@@ -272,8 +274,57 @@ npm run dev
 1. 登录 → **LiteFlow编排 → 链路管理**
 2. 对 `helloChain` 点击 **试跑**；也可点 **用例** 跑种子回归
 3. **AI能力 → 模型管理** 录入 DeepSeek Key 并设为默认后，可依次试跑 `agentRiskDemo` / `lc4jChatDemo` / `lc4jGraphDemo` / `lc4jRagDemo` / `aiKitAgentDemo`
-4. 打开 **AI能力 → AI助手**，进行多轮对话（复用同一默认模型）
+4. 打开 **AI能力 → AI助手**，选智能体「运维助手」，发送「执行 helloChain，name 用 RuoYi」（种子已绑 `lf_helloChain`）
 5. 点击 **编排** 打开可视化编辑器，拖拽组件并保存 / 发布；发布草稿时可选择先跑启用中的用例
+6. （可选）开放 API / Webhook 见下方 [生产集成](#生产集成)
+
+---
+
+## 生产集成
+
+外部系统、回调与智能体调用业务链路，可按场景选用：
+
+| 场景 | 怎么用 | 说明 |
+|------|--------|------|
+| **外部系统直接跑链路** | `POST /liteflow/open/execute/{chainName}` + `X-LiteFlow-Api-Key` | 不依赖「设为工具」；含 Agent 的链路默认禁止，可按链路放行 |
+| **执行完成回调** | 链路填 Webhook URL，或配全局 `liteflow.webhook` | HMAC 签名、失败退避重试；状态写在执行日志 |
+| **本系统智能体调链路** | 链路管理「更多 → 设为工具」→ 绑到智能体 | admin 内本地执行，**不必**启动 MCP `:8090` |
+| **外部 MCP 客户端调链路** | 设为工具时勾选「同步开放 MCP」 | MCP 转发开放 API；含 Agent 的链路默认不可勾 |
+
+**开放 API 最小示例（JDK 11+，无第三方库）：**
+
+```bash
+java docs/demo/OpenExecuteClient.java
+java docs/demo/OpenExecuteClient.java helloChain "{\"name\":\"RuoYi\"}"
+```
+
+环境变量：`LITEFLOW_BASE_URL`（默认 `http://localhost:8080`）、`LITEFLOW_API_KEY`（默认与 `application.yml` 中 `liteflow.open-api.api-key` 一致）。
+
+**Webhook 本地观察重试：**
+
+```bash
+java docs/demo/WebhookEchoServer.java 9099 --fail
+```
+
+链路 Webhook 填 `http://127.0.0.1:9099/hook`，试跑后打开 **执行日志** 详情可见多次尝试。去掉 `--fail` 则验签并返回 200。
+
+配置摘要：
+
+```yaml
+liteflow:
+  open-api:
+    enabled: true
+    api-key: ruoyi-liteflow-open-key-change-me   # 生产务必修改
+    allow-agent-chains: false
+    allow-agent-chain-names: []                  # 如 [agentRiskDemo]
+  webhook:
+    enabled: false
+    url: https://example.com/hook
+    secret: ${LITEFLOW_WEBHOOK_SECRET:}          # 非空则带 X-LiteFlow-Signature
+    max-attempts: 3
+```
+
+完整字段、签名算法与权限说明见 [docs/API.md](docs/API.md)。
 
 ---
 
@@ -322,7 +373,7 @@ npm run dev
 1. **AI能力 → 模型管理**：新增模型并设为默认；或设置环境变量 `DEEPSEEK_API_KEY`
 2. 试跑链路 `agentRiskDemo`
 
-开放 API 默认 **禁止** 含 Agent 类节点的链路。按链路放行：`liteflow.open-api.allow-agent-chain-names: [agentRiskDemo]`；或全局 `allow-agent-chains=true`。Java 示例：[docs/demo/OpenExecuteClient.java](docs/demo/OpenExecuteClient.java)。详见 [docs/AGENT.md](docs/AGENT.md)、[docs/API.md](docs/API.md)。
+开放 API 默认 **禁止** 含 Agent 类节点的链路。按链路放行与 Java 示例见 [生产集成](#生产集成)、[docs/API.md](docs/API.md)、[docs/AGENT.md](docs/AGENT.md)。
 
 ### 2. LangChain4j / LangGraph4j / RAG
 
@@ -376,7 +427,7 @@ RAG 默认知识库位于模块资源目录 `ruoyi-vue-liteflow-langchain/src/ma
 1. 导入 [sql/ry-vue.sql](sql/ry-vue.sql) 后**重新登录**，侧栏出现 **AI能力**
 2. 菜单：模型 / 工具 / 智能体 / 知识库 / 技能 / 记忆 / 上下文策略
 3. 智能体支持绑定工具、知识库、技能与上下文策略；试跑走 `POST /aikit/agent/{code}/run`
-4. 链路管理「更多 → 设为工具」把已发布 chain 登记为 `liteflow-chain`（种子已含 `lf_helloChain`，绑定到运维助手）
+4. 链路管理「更多 → 设为工具」把已发布 chain 登记为 `liteflow-chain`（种子已含 `lf_helloChain`，绑定到运维助手）；与开放 API 的区别见 [生产集成](#生产集成)
 5. 配置 `DEEPSEEK_API_KEY`，或在「模型管理」写入加密 Key
 
 可选独立进程：`ai-kit-boot`（:8091，`platform` profile）配置驱动试跑；MCP Playground 见 [docs/demo/mcp-ai-core/](docs/demo/mcp-ai-core/README.md)。
@@ -385,6 +436,12 @@ RAG 默认知识库位于模块资源目录 `ruoyi-vue-liteflow-langchain/src/ma
 
 ```yaml
 liteflow:
+  open-api:
+    enabled: true
+    api-key: ruoyi-liteflow-open-key-change-me
+  webhook:
+    enabled: false
+    secret: ${LITEFLOW_WEBHOOK_SECRET:}
   agent:
     openai-compatible:
       deepseek:
@@ -401,6 +458,7 @@ liteflow:
       min-score: 0.45
 ```
 
+开放 API / Webhook 完整项见 [生产集成](#生产集成)。
 ---
 
 ## 文档
@@ -490,7 +548,7 @@ docker compose up -d --build
 
 | 菜单 | 功能 |
 |------|------|
-| 链路管理 | CRUD、发布、试跑（含 AI 洞察）、试跑用例与发布前回归、克隆、导入导出、决策路由试跑 |
+| 链路管理 | CRUD、发布、试跑（含 AI 洞察）、试跑用例与发布前回归、设为工具、克隆、导入导出、决策路由试跑 |
 | 可视化编排 | X6 编排器 |
 | 脚本管理 | 多语言脚本在线编辑 |
 | 组件中心 | 扫描组件、引用分析 |
@@ -516,6 +574,9 @@ A：执行 [sql/ry-vue.sql](sql/ry-vue.sql) 中 `lf_chain_case` 建表与种子�
 
 **Q：开放 API 401？**  
 A：检查请求头 `X-LiteFlow-Api-Key` 或具备权限 `liteflow:open:execute` 的 Token。Java 示例见 [docs/demo/OpenExecuteClient.java](docs/demo/OpenExecuteClient.java)。
+
+**Q：「设为工具」后外部系统能调吗？**  
+A：默认只给本系统智能体 / AI 助手用（admin 本地执行）。外部业务系统应直接调开放 API，不必设为工具。若要给外部 MCP 客户端当 Tool，设为工具时勾选「同步开放 MCP」。详见 [生产集成](#生产集成)。
 
 **Q：已有库执行日志没有 Webhook 字段？**  
 A：执行：
@@ -567,7 +628,7 @@ A：可不配置模型 Key；未执行 AI Demo 链路时不影响普通业务 De
 
 ## 路线图
 
-当前 **v3.10.0** 已覆盖：可视化编排、草稿发布、执行日志与监控、开放 API、AI Kit 配置面（模型 / 工具 / 智能体 / 助手）。下面是后续打算做的事，欢迎按条目提 Issue / PR。
+当前 **v3.10.0** 已覆盖：可视化编排、草稿发布、执行日志与监控、开放 API、AI Kit 配置面。近期补齐的生产闭环（Docker、试跑用例、开放客户端与 Webhook、链路作工具）见下表「已支持」项；欢迎按条目提 Issue / PR。
 
 | 里程碑 | 规划 | 状态 |
 |--------|------|------|
