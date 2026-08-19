@@ -454,7 +454,7 @@ docker compose up -d --build
 
 | 服务 | 地址 |
 |------|------|
-| 前端 | http://localhost/ |
+| 前端 | http://localhost:8088/ （compose 默认；改回 `"80:80"` 则走 80 端口） |
 | 后端 | http://localhost:8080/ |
 | 默认账号 | `admin` / `admin123` |
 
@@ -472,8 +472,8 @@ docker compose up -d --build
 | 现象 | 处理 |
 |------|------|
 | 无法登录 / 验证码不出来 | 等 `mysql`、`redis`、`backend` 就绪；`docker compose ps` / `docker compose logs -f backend` |
-| 80 端口被宝塔占用 | 改 `docker-compose.yml` 前端映射为 `"8088:80"`，访问 http://服务器IP:8088/ |
-| 3306 / 6379 冲突 | 改映射或停掉面板里已有的 MySQL/Redis |
+| 前端打不开 | 默认映射 **8088**；访问 http://服务器IP:8088/ 。若仍冲突再改 `docker-compose.yml` |
+| 3306 / 6379 冲突 | 已默认不把 MySQL/Redis 暴露到宿主机，backend 走容器网络 |
 | AI 试跑或助手失败 | 配置 `DEEPSEEK_API_KEY`，或登录后到「AI能力 → 模型管理」写入 Key |
 | 构建失败 / 很慢 | 确认能访问 `maven.aliyun.com`、`registry.npmmirror.com`；磁盘至少留 10G+ |
 

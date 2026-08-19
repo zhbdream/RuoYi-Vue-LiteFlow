@@ -9,8 +9,9 @@ services:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: ry-vue
       TZ: Asia/Shanghai
-    ports:
-      - "3306:3306"
+    # 不映射到宿主机，避免和宝塔 MySQL/Redis 抢 3306/6379；容器内仍为 3306
+    # ports:
+    #   - "13306:3306"
     volumes:
       - ./docker/mysql/init:/docker-entrypoint-initdb.d
       - ./sql/ry-vue.sql:/docker-entrypoint-initdb.d/01-ry-vue.sql:ro
@@ -26,8 +27,9 @@ services:
   redis:
     image: redis:7-alpine
     container_name: ruoyi-liteflow-redis
-    ports:
-      - "6379:6379"
+    # 不映射到宿主机，避免抢 6379；backend 走 docker 网络 redis:6379
+    # ports:
+    #   - "16379:6379"
     volumes:
       - redis_data:/data
     healthcheck:
@@ -79,9 +81,9 @@ services:
     container_name: ruoyi-liteflow-frontend
     depends_on:
       - backend
-    # 宝塔若已占用 80，可改为 "8088:80"
+    # 默认 8088，避免和宝塔 Nginx 的 80 冲突；本机想用 80 可改成 "80:80"
     ports:
-      - "80:80"
+      - "8088:80"
 
 volumes:
   mysql_data:
