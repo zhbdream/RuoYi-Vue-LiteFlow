@@ -3,8 +3,12 @@ package com.ruoyiliteflow.liteflow.service.impl;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Objects;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import com.ruoyiliteflow.common.constant.UserConstants;
 import com.ruoyiliteflow.common.exception.ServiceException;
 import com.ruoyiliteflow.common.utils.StringUtils;
@@ -18,6 +22,8 @@ import com.ruoyiliteflow.liteflow.service.ILfChainAuditService;
 import com.ruoyiliteflow.liteflow.service.ILfChainPermissionService;
 import com.ruoyiliteflow.liteflow.service.ILfChainService;
 import com.yomahub.liteflow.builder.el.LiteFlowChainELBuilder;
+import com.yomahub.liteflow.flow.FlowBus;
+import com.yomahub.liteflow.flow.element.Chain;
 import com.yomahub.liteflow.meta.LiteflowMetaOperator;
 
 @Service
@@ -56,6 +62,7 @@ public class LfChainServiceImpl implements ILfChainService
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public int insertLfChain(LfChain lfChain)
     {
         fillDefaults(lfChain);
@@ -70,13 +77,14 @@ public class LfChainServiceImpl implements ILfChainService
             lfChainAuditService.recordChange(null, saved, LiteFlowAuditAction.CREATE, lfChain.getCreateBy());
             if (isPublished(lfChain))
             {
-                reloadChain(lfChain);
+                reloadChain(saved);
             }
         }
         return rows;
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public int updateLfChain(LfChain lfChain)
     {
         fillDefaults(lfChain);
@@ -96,7 +104,7 @@ public class LfChainServiceImpl implements ILfChainService
             lfChainAuditService.recordChange(before, after, LiteFlowAuditAction.EDIT, lfChain.getUpdateBy());
             if (isPublished(lfChain))
             {
-                reloadChain(lfChain);
+                reloadChain(after);
             }
         }
         return rows;
@@ -124,10 +132,34 @@ public class LfChainServiceImpl implements ILfChainService
         {
             return;
         }
-        if (StringUtils.isNotEmpty(lfChain.getRouteEl()) || StringUtils.isNotEmpty(lfChain.getNamespace()))
+        String chainName = lfChain.getChainName();
+        Chain previous = FlowBus.getChain(chainName);
+        Chain snapshot = previous == null ? null : new Chain(chainName);
+        if (previous != null)
         {
-            LiteFlowChainELBuilder builder = LiteFlowChainELBuilder.createChain()
-                .setChainId(lfChain.getChainName())
+            copyRuntimeState(previous, snapshot);
+        }
+        Chain candidate = new Chain(chainName);
+        if (TransactionSynchronizationManager.isSynchronizationActive()
+                && TransactionSynchronizationManager.isActualTransactionActive())
+        {
+            // 数据库提交发生在方法返回之后，提交失败时也必须恢复内存中的生效版本。
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization()
+            {
+                @Override
+                public void afterCompletion(int status)
+                {
+                    if (status != STATUS_COMMITTED)
+                    {
+                        restoreRuntimeChain(chainName, previous, snapshot);
+                    }
+                }
+            });
+        }
+        try
+        {
+            // 不使用 setChainId 取出旧对象，避免失败编译提前修改正在使用的规则。
+            LiteFlowChainELBuilder builder = LiteFlowChainELBuilder.fromChain(candidate)
                 .setEL(lfChain.getElData());
             if (StringUtils.isNotEmpty(lfChain.getRouteEl()))
             {
@@ -137,10 +169,54 @@ public class LfChainServiceImpl implements ILfChainService
             {
                 builder.setNamespace(lfChain.getNamespace());
             }
-            builder.build();
+            // 发布必须立即编译主体与路由，不能依赖首次执行时才解析的配置。
+            LiteFlowChainELBuilder.buildUnCompileChain(builder.getChain());
+            if (previous != null)
+            {
+                // 父链可能持有旧 Chain 引用，成功时保留该对象身份以延续热更新行为。
+                copyRuntimeState(candidate, previous);
+                FlowBus.addChain(previous);
+            }
+        }
+        catch (RuntimeException e)
+        {
+            restoreRuntimeChain(chainName, previous, snapshot);
+            throw new ServiceException("链路加载失败: " + e.getMessage());
+        }
+    }
+
+    /** 恢复加载前的运行状态，避免失败候选及其表达式缓存继续生效。 */
+    private void restoreRuntimeChain(String chainName, Chain previous, Chain snapshot)
+    {
+        if (previous == null)
+        {
+            if (FlowBus.containChain(chainName))
+            {
+                FlowBus.removeChain(chainName);
+            }
             return;
         }
-        LiteflowMetaOperator.reloadOneChain(lfChain.getChainName(), lfChain.getElData());
+        Chain current = FlowBus.getChain(chainName);
+        if (current != null && (current != previous
+                || !Objects.equals(current.getElMd5(), snapshot.getElMd5())))
+        {
+            // 先清除失败候选的表达式缓存，避免按新 EL 执行时误命中恢复后的旧链。
+            FlowBus.removeChain(chainName);
+        }
+        copyRuntimeState(snapshot, previous);
+        FlowBus.addChain(previous);
+    }
+
+    /** 只复制本次加载改变的字段，保留原 Chain 对象及线程池等既有运行配置。 */
+    private void copyRuntimeState(Chain source, Chain target)
+    {
+        target.setEl(source.getEl());
+        target.setElMd5(source.getElMd5());
+        target.setRouteEl(source.getRouteEl());
+        target.setNamespace(source.getNamespace());
+        target.setConditionList(source.getConditionList());
+        target.setRouteItem(source.getRouteItem());
+        target.setCompiled(source.isCompiled());
     }
 
     @Override
@@ -155,6 +231,7 @@ public class LfChainServiceImpl implements ILfChainService
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public void publishChain(Long id, String publishBy)
     {
         LfChain chain = lfChainMapper.selectLfChainById(id);
@@ -168,15 +245,18 @@ public class LfChainServiceImpl implements ILfChainService
             throw new ServiceException("EL 表达式不能为空，无法发布");
         }
         LfChain before = copyChain(chain);
+        reloadChain(chain);
         int nextVersion = chain.getVersion() == null ? 1 : chain.getVersion() + 1;
         chain.setDraftFlag("0");
         chain.setVersion(nextVersion);
         chain.setUpdateBy(publishBy);
-        lfChainMapper.updateLfChain(chain);
+        if (lfChainMapper.updateLfChain(chain) != 1)
+        {
+            throw new ServiceException("链路发布失败，记录已不存在");
+        }
         LfChain after = lfChainMapper.selectLfChainById(id);
         lfChainAuditService.recordChange(before, after, LiteFlowAuditAction.PUBLISH, publishBy);
         saveVersionSnapshot(after, publishBy);
-        reloadChain(after);
     }
 
     @Override

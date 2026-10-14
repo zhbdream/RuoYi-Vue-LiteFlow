@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- 为真实LiteFlow执行器提供独立规则源，测试不读取数据库中的规则。 -->
+<flow>
+    <nodes>
+        <node id="regressionFixtureBootstrap" name="合成测试初始化" type="script" language="groovy">
+            <![CDATA[defaultContext.setData('fixture', true)]]>
+        </node>
+    </nodes>
+    <chain name="regressionFixtureBootstrapChain">
+        THEN(regressionFixtureBootstrap);
+    </chain>
+</flow>

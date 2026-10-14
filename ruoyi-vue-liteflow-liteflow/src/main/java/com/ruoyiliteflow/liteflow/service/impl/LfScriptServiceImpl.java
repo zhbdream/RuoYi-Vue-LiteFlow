@@ -169,7 +169,9 @@ public class LfScriptServiceImpl implements ILfScriptService
         String tempId = "__script_validate__" + System.currentTimeMillis();
         try
         {
-            LiteflowMetaOperator.reloadScript(tempId, scriptData.trim());
+            // 临时节点尚未注册，reloadScript 会直接返回，必须实际编译才能发现语法错误。
+            FlowBus.addScriptNodeAndCompile(tempId, tempId, resolveScriptNodeType(scriptType),
+                    scriptData.trim(), language);
         }
         catch (Exception e)
         {
@@ -188,7 +190,7 @@ public class LfScriptServiceImpl implements ILfScriptService
             }
             catch (Exception ignored)
             {
-                // ignore cleanup failure
+                // 临时节点可能尚未创建，清理失败不应覆盖原始校验结果。
             }
         }
     }
@@ -229,7 +231,17 @@ public class LfScriptServiceImpl implements ILfScriptService
             reloadQlExpressScript(lfScript);
             return;
         }
-        LiteflowMetaOperator.reloadScript(lfScript.getScriptId(), lfScript.getScriptData());
+        if (FlowBus.getNode(lfScript.getScriptId()) == null)
+        {
+            // 数据库保存不会注册运行时节点，首次新增或首次启用需要显式注册。
+            FlowBus.addScriptNodeAndCompile(lfScript.getScriptId(), lfScript.getScriptName(),
+                    resolveScriptNodeType(lfScript.getScriptType()), lfScript.getScriptData(),
+                    lfScript.getScriptLanguage());
+        }
+        else
+        {
+            LiteflowMetaOperator.reloadScript(lfScript.getScriptId(), lfScript.getScriptData());
+        }
     }
 
     private void validateQlExpressScript(String scriptData, String scriptType)
